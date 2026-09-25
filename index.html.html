@@ -12,15 +12,14 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/recharts@2.10.3/umd/Recharts.js"></script>
 
 <style>
   html, body { margin: 0; padding: 0; background: #F7F4EE; }
   #root { min-height: 100vh; }
   #boot-fallback { font-family: Inter, sans-serif; padding: 40px; text-align: center; color: #5B6472; }
   #boot-error { font-family: Inter, sans-serif; padding: 24px; text-align: left; color: #C0504D; background: #FBEAEA; border-radius: 10px; margin: 20px; white-space: pre-wrap; font-size: 13px; display: none; }
+  #boot-error b { display: block; margin-bottom: 8px; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -28,18 +27,24 @@
 <div id="boot-error"></div>
 
 <script>
-  window.addEventListener('error', function (e) {
+  function showBootError(msg) {
     var box = document.getElementById('boot-error');
-    if (box) {
-      box.style.display = 'block';
-      box.textContent = 'No se pudo cargar la app: ' + (e.message || e.error) + (e.filename ? (' (' + e.filename + ':' + e.lineno + ')') : '');
-    }
+    if (!box) return;
+    box.style.display = 'block';
+    box.innerHTML = '<b>No se pudo cargar la app</b>' + msg;
+  }
+  window.addEventListener('error', function (e) {
+    var detail = e.message || (e.error && e.error.message) || 'Error desconocido';
+    var loc = e.filename ? (' — ' + e.filename.split('/').pop() + ':' + e.lineno) : '';
+    showBootError(detail + loc);
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    showBootError('Promesa rechazada: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
   });
 </script>
 
 <script type="text/babel" data-presets="react,env">
 const { useState, useEffect, useMemo, useRef, useCallback } = React;
-const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
 
 // --- Kit de íconos propio, sin depender de ningún CDN de terceros ---
 function mkIcon(paths, viewBox) {
@@ -1102,22 +1107,26 @@ function LaboratorioTab({ setTab }) {
       </div>
 
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 14, color: "var(--ink)" }}>
           Agua directa vs. indirecta (por día, en litros)
         </div>
-        <div style={{ height: 140 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fontFamily: "var(--font-body)", fill: "var(--ink-soft)" }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fontFamily: "var(--font-body)", fill: "var(--ink)" }} axisLine={false} tickLine={false} width={62} />
-              <Tooltip formatter={v => `${numFmt(v, 2)} L`} contentStyle={{ fontFamily: "var(--font-body)", fontSize: 12, borderRadius: 6, background: "var(--paper)", border: "1px solid var(--line)", color: "var(--ink)" }} />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                <Cell fill="var(--acc-blue)" />
-                <Cell fill="var(--acc-orange)" />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {chartData.map((d, i) => {
+            const maxVal = Math.max(chartData[0].value, chartData[1].value, 0.0001);
+            const pct = Math.max(2, (d.value / maxVal) * 100);
+            const barColor = i === 0 ? "var(--acc-blue)" : "var(--acc-orange)";
+            return (
+              <div key={d.name}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                  <span style={{ color: "var(--ink-soft)", fontWeight: 600 }}>{d.name}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", fontWeight: 700 }}>{numFmt(d.value, 2)} L</span>
+                </div>
+                <div style={{ height: 10, background: "var(--paper-soft)", borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 5, transition: "width .3s ease" }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
