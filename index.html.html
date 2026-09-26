@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Sed de Datos — El costo oculto de cada consulta</title>
+<title>SequIA — El costo oculto de la IA</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💧</text></svg>" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +23,7 @@
 </style>
 </head>
 <body>
-<div id="root"><div id="boot-fallback">Cargando Sed de Datos…</div></div>
+<div id="root"><div id="boot-fallback">Cargando SequIA…</div></div>
 <div id="boot-error"></div>
 
 <script>
@@ -238,7 +238,7 @@ function App() {
   const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   useEffect(() => {
-    if (typeof document !== "undefined") document.title = "Sed de Datos — El costo oculto de la IA";
+    if (typeof document !== "undefined") document.title = "SequIA — El costo oculto de la IA";
   }, []);
 
   useEffect(() => {
@@ -283,7 +283,7 @@ function App() {
         <div className="hi-splash-logo" style={splashStyles.badge}>
           <BrandMark size={38} />
         </div>
-        <h1 className="hi-splash-title" style={splashStyles.title}>Sed de Datos</h1>
+        <h1 className="hi-splash-title" style={splashStyles.title}>SequIA</h1>
         <p className="hi-splash-tag" style={splashStyles.tag}>El costo oculto de cada consulta</p>
         <div style={{ display: "flex", gap: 6, marginTop: 26 }}>
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: "0s" }} />
@@ -452,7 +452,7 @@ const splashStyles = {
 };
 
 // Marca de la app: el mismo logo de 3 puntos conectados que usa el sitio web
-// "Sed de Datos", para que ambos productos compartan identidad visual.
+// "SequIA", para que ambos productos compartan identidad visual.
 function BrandMark({ size = 30, dark = false }) {
   const color = dark ? "var(--logo-cyan)" : "var(--acc-blue)";
   return (
@@ -496,7 +496,7 @@ function InstallGuideModal({ onClose }) {
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--acc-blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Smartphone size={19} color="var(--acc-blue)" />
           </div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá Sed de Datos</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá SequIA</div>
         </div>
         <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 18px" }}>
           Agregala a tu pantalla de inicio y abrila como una app, sin pasar por el navegador cada vez. Funciona desde <strong>Safari</strong> en iPhone.
@@ -535,8 +535,16 @@ function Header({ onInstallClick }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <BrandMark />
           <div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>Sed de Datos</h1>
+            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>SequIA</h1>
             <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0" }}>El costo oculto de cada consulta</p>
+            <a
+              href="https://sed-de-datos.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5 }}
+            >
+              Sed de Datos <ExternalLink size={10} />
+            </a>
           </div>
         </div>
         <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn" style={{
@@ -575,7 +583,7 @@ function Nav({ tab, setTab }) {
           color: "var(--on-accent)",
         }}
       >
-        <Gamepad2 size={18} /> {gameActive ? "Estás jugando Sed de Datos" : "🎮 Jugar Sed de Datos"}
+        <Gamepad2 size={18} /> {gameActive ? "Estás jugando SequIA" : "🎮 Jugar SequIA"}
       </button>
 
       <div className="hi-card" style={{ display: "flex", gap: 4, background: "var(--paper-soft)", borderRadius: 4, padding: 4, flexWrap: "wrap" }}>
@@ -660,7 +668,7 @@ function Inicio({ setTab }) {
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => setTab("juego")} className="hi-btn hi-glow" style={{ ...primaryBtn, background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))", color: "#FFFFFF" }}>
-              <Gamepad2 size={14} /> Jugar Sed de Datos
+              <Gamepad2 size={14} /> Jugar SequIA
             </button>
             <button onClick={() => setTab("calculadora")} className="hi-btn" style={ghostBtn}>
               <Calculator size={13} /> Calculá tu huella
@@ -1537,7 +1545,7 @@ function QuizTab({ setTab }) {
 }
 
 const FAQS = [
-  { q: "¿Cuánta agua gasta realmente una consulta a un chatbot de IA?", a: "Depende de qué estudio mires. La Calculadora de esta app usa una estimación de 0,015 L (15 mL) de agua directa por consulta de texto, basada en OpenAI y UC Riverside. El simulador 'Sed de Datos' usa en cambio la medición que Google publicó específicamente para Gemini: 0,26 mL de agua directa. Ninguna es 'la' cifra universal." },
+  { q: "¿Cuánta agua gasta realmente una consulta a un chatbot de IA?", a: "Depende de qué estudio mires. La Calculadora de esta app usa una estimación de 0,015 L (15 mL) de agua directa por consulta de texto, basada en OpenAI y UC Riverside. El simulador 'SequIA' usa en cambio la medición que Google publicó específicamente para Gemini: 0,26 mL de agua directa. Ninguna es 'la' cifra universal." },
   { q: "¿Por qué esta cifra es tan distinta a la que vi en otro lado?", a: "Porque cada estudio mide una IA distinta con una metodología distinta. Google midió específicamente Gemini y publicó 0,26 mL de agua directa por consulta (esa es la que usa el simulador del juego). La Calculadora, en cambio, usa la estimación de UC Riverside para ChatGPT (10–25 mL) y el consumo eléctrico que reportó OpenAI (0,34 Wh, contra los 0,24 Wh de Google). Ninguna cifra es 'la correcta': son mediciones de compañías y modelos distintos, con supuestos distintos sobre el hardware y la refrigeración. Por eso en toda la app aclaramos de qué empresa o estudio sale cada número." },
   { q: "¿Por qué se habla de agua si los centros de datos consumen electricidad?", a: "Porque la electricidad y el agua están conectadas de dos formas: los servidores necesitan refrigeración (a veces con agua) y, además, generar esa electricidad —sobre todo en plantas térmicas— también requiere agua." },
   { q: "¿Qué diferencia hay entre agua 'directa' e 'indirecta'?", a: "La directa es la que se usa dentro del centro de datos para enfriar los equipos. La indirecta es la que consumen las centrales eléctricas para producir la electricidad que ese centro de datos consume." },
@@ -2191,7 +2199,7 @@ function Juego() {
           <div style={{ position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Gamepad2 size={17} color="#FFFFFF" />
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}>Sed de Datos</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}>SequIA</div>
             </div>
             <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", margin: "0 0 12px" }}>
               Antes de arrancar, elegí dónde construir el centro de datos. No hay una zona objetivamente mejor: cada una cambia el equilibrio entre agua, energía y costos.
@@ -2241,7 +2249,7 @@ function Juego() {
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <Gamepad2 size={17} color="var(--acc-blue)" />
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Sed de Datos</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
             {zone.emoji} Construyendo en {zone.label.replace(/^Zona [A-C] — /, "")}. Elegí una dificultad para arrancar.
@@ -2618,7 +2626,7 @@ function Juego() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Gamepad2 size={17} color="var(--acc-blue)" />
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Sed de Datos</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)" }}>Día {state.day} / {diff.days} · {diff.label} · {zone.emoji}</span>
@@ -2916,7 +2924,6 @@ const SOURCES = [
   { title: "Guerra de recursos: el megaproyecto de OpenAI por US$ 25.000M tensiona el agua, la energía y el cobre en Argentina", org: "Acero y Roca (2026)", url: "https://aceroyroca.com/2026/08/08/noticias-openai-stargate-data-center-cobre-rigi-argentina/", desc: "Cobertura en español de Stargate Argentina (Neuquén, hasta 500 MW), con la estimación de 7,1 m³ de agua por cada MWh generado (directa e indirecta) para este tipo de mega centros de datos." },
 ];
 
-// Intenta usar la capacidad "db" (funciona en una página ya publicada); si no
 function Fuentes({ setTab }) {
   return (
     <div>
@@ -2926,7 +2933,7 @@ function Fuentes({ setTab }) {
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Fuentes</div>
         </div>
         <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
-          Todos los datos de esta app están basados en estudios y disclosures públicos. Podés leer el original en cada enlace. El simulador "Sed de Datos" usa como base principal la metodología que Google publicó para Gemini; la Calculadora usa la de OpenAI y UC Riverside — otras empresas y estudios miden distinto y a veces dan cifras más altas o más bajas; lo aclaramos en cada sección donde puede generar confusión.
+          Todos los datos de esta app están basados en estudios y disclosures públicos. Podés leer el original en cada enlace. El simulador "SequIA" usa como base principal la metodología que Google publicó para Gemini; la Calculadora usa la de OpenAI y UC Riverside — otras empresas y estudios miden distinto y a veces dan cifras más altas o más bajas; lo aclaramos en cada sección donde puede generar confusión.
         </p>
       </div>
       {SOURCES.map((s, i) => (
@@ -2951,7 +2958,6 @@ function Fuentes({ setTab }) {
     </div>
   );
 }
-
 
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
