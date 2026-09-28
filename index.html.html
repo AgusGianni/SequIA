@@ -4,7 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>SequIA — El costo oculto de la IA</title>
+
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#06264A" />
+<link rel="icon" href="./icon-192.png" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💧</text></svg>" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="SequIA" />
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,6 +50,14 @@
   window.addEventListener('unhandledrejection', function (e) {
     showBootError('Promesa rechazada: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
   });
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {
+        // si el service worker no se puede registrar (ej. abierto como archivo
+        // local, sin https), la app sigue funcionando igual, solo sin offline
+      });
+    });
+  }
 </script>
 
 <script type="text/babel" data-presets="react,env">
@@ -160,9 +177,10 @@ const Thermometer = mkIcon(["M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"]);
 const Smartphone = mkIconNodes([
   ["rect", { width: 14, height: 20, x: 5, y: 2, rx: 2, ry: 2 }], ["path", { d: "M12 18h.01" }],
 ]);
-const Share2 = mkIconNodes([
-  ["circle", { cx: 18, cy: 5, r: 3 }], ["circle", { cx: 6, cy: 12, r: 3 }], ["circle", { cx: 18, cy: 19, r: 3 }],
-  ["line", { x1: 8.59, x2: 15.42, y1: 13.51, y2: 17.49 }], ["line", { x1: 15.41, x2: 8.59, y1: 6.51, y2: 10.49 }],
+const Share = mkIcon(["M12 2v13", "m16 6-4-4-4 4", "M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"]);
+const CircleChevronDown = mkIconNodes([
+  ["circle", { cx: 12, cy: 12, r: 10 }],
+  ["path", { d: "m9 10 3 3 3-3" }],
 ]);
 const SquarePlus = mkIconNodes([
   ["rect", { width: 18, height: 18, x: 3, y: 3, rx: 2 }], ["path", { d: "M8 12h8" }], ["path", { d: "M12 8v8" }],
@@ -284,7 +302,7 @@ function App() {
           <BrandMark size={38} />
         </div>
         <h1 className="hi-splash-title" style={splashStyles.title}>SequIA</h1>
-        <p className="hi-splash-tag" style={splashStyles.tag}>El costo oculto de cada consulta</p>
+        <p className="hi-splash-tag" style={splashStyles.tag}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
         <div style={{ display: "flex", gap: 6, marginTop: 26 }}>
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: "0s" }} />
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: ".15s" }} />
@@ -499,24 +517,24 @@ function InstallGuideModal({ onClose }) {
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá SequIA</div>
         </div>
         <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 18px" }}>
-          Agregala a tu pantalla de inicio y abrila como una app, sin pasar por el navegador cada vez. Funciona desde <strong>Safari</strong> en iPhone.
+          Agregala a tu pantalla de inicio y abrila como una app, sin pasar por el navegador cada vez.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
             <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>1</div>
             <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Tocá el ícono de <strong>Compartir</strong></p>
-            <Share2 size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+            <Share size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
             <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>2</div>
             <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Elegí <strong>"Agregar a pantalla de inicio"</strong></p>
-            <SquarePlus size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+            <CircleChevronDown size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
             <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>3</div>
             <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Confirmá tocando <strong>"Añadir"</strong></p>
-            <CheckCircle2 size={20} color="var(--acc-green)" style={{ flexShrink: 0 }} />
+            <SquarePlus size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
           </div>
         </div>
 
@@ -536,7 +554,7 @@ function Header({ onInstallClick }) {
           <BrandMark />
           <div>
             <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>SequIA</h1>
-            <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0" }}>El costo oculto de cada consulta</p>
+            <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
             <a
               href="https://sed-de-datos.vercel.app/"
               target="_blank"
