@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -350,7 +350,7 @@ function App() {
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,700;1,400;1,700&display=swap');
       :root {
         --bg: #F7F4EE;
         --paper: #FFFFFF;
@@ -386,6 +386,7 @@ function GlobalStyle() {
         --font-display: 'Inter', sans-serif;
         --font-body: 'Inter', sans-serif;
         --font-mono: 'IBM Plex Mono', monospace;
+        --font-serif: 'Newsreader', Georgia, Cambria, 'Times New Roman', Times, serif;
       }
       * { box-sizing: border-box; }
       @keyframes glowPulse {
@@ -1342,7 +1343,7 @@ const ARTICLES = [
   {
     icon: Sparkles, color: "acc-orange", topic: "Escala", art: ScaleArt,
     title: "Una gota se hace un océano",
-    text: "0,26 mL por consulta parece nada. Pero multiplicado por miles de millones de consultas diarias en todo el mundo, la cifra global se mide en miles de millones de litros por año."
+    text: "0,26 mL por consulta parece nada. Pero ChatGPT solo procesa unos 2.500 millones de mensajes por día (TechCrunch, 2025) — multiplicado por esa escala, la cifra global se mide en miles de millones de litros por año."
   },
   {
     icon: Server, color: "acc-orange", topic: "Entrenamiento", art: TrainingArt,
@@ -1390,7 +1391,7 @@ function Aprender({ setTab }) {
                   background: `var(--${a.color}-bg)`, borderRadius: 20, padding: "3px 10px", marginBottom: 10
                 }}>{a.topic}</span>
                 <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 6, lineHeight: 1.3 }}>{a.title}</div>
-                <p style={{ fontSize: 12.5, color: "var(--ink-soft)", lineHeight: 1.55, margin: 0 }}>{a.text}</p>
+                <p style={{ fontFamily: "var(--font-serif)", fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6 }}>{a.text}</p>
               </div>
             </div>
           );
@@ -2931,6 +2932,9 @@ function ArrowRightIcon({ color }) {
 
 
 const SOURCES = [
+  { title: "El centro de datos de la Patagonia y la frontera del agua digital", org: "Sed de Datos — análisis propio, sección Patagonia", url: "https://sed-de-datos.vercel.app/", desc: "Estimación propia de nuestro sitio: ≈25.000 L de agua de refrigeración por día por cada MW de capacidad instalada. Es una cifra distinta a la de agua indirecta por kWh que usa el resto de esta app — mide el agua directa de refrigeración escalada por capacidad del centro de datos, no el agua de generar la electricidad." },
+  { title: "Making AI Less 'Thirsty'", org: "Li, Yang, Islam & Ren — UC Riverside (2023), documento técnico en inglés", url: "https://arxiv.org/abs/2304.03271", desc: "El estudio académico que mide en detalle la huella hídrica directa e indirecta de entrenar y usar modelos como GPT-3 — la base de las cifras de agua por consulta que usa la Calculadora." },
+  { title: "ChatGPT users send 2.5 billion prompts a day", org: "TechCrunch (2025) — en inglés", url: "https://techcrunch.com/2025/07/21/chatgpt-users-send-2-5-billion-prompts-a-day/", desc: "La cifra de escala global que da contexto a por qué un gasto mínimo por consulta termina pesando tanto: 2.500 millones de mensajes diarios, según datos de OpenAI." },
   { title: "¿Cuánta energía consume la IA de Google? Hicimos los cálculos", org: "Blog oficial de Google (2025)", url: "https://blog.google/intl/es-419/actualizaciones-de-producto/en-la-nube/cuanta-energia-consume-la-ia-de-google-hicimos-los-calculos/", desc: "El anuncio oficial de Google, en español: metodología y cifras (0,24 Wh y 0,26 mL de agua directa por prompt mediano en Gemini)." },
   { title: "Measuring the environmental impact of delivering AI at Google Scale", org: "arXiv 2508.15734 (2025) — documento técnico en inglés", url: "https://arxiv.org/abs/2508.15734v1", desc: "El paper técnico completo detrás del anuncio de Google, con el detalle de la metodología. Solo está disponible en inglés." },
   { title: "Cinco gotas de agua: el costo que dice Google tiene un prompt en Gemini", org: "Digital Trends en Español (2025)", url: "https://es.digitaltrends.com/android/cinco-gotas-de-agua-el-costo-que-dice-google-tiene-un-prompt-en-gemini/", desc: "Cobertura en español que suma las críticas de investigadores (Shaolei Ren, Alex de Vries-Gao) sobre lo que el estudio de Google no cuenta: el agua indirecta." },
