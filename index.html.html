@@ -241,6 +241,15 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState("inicio");
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  // Volver al inicio: si hay una partida en curso, antes pide confirmación.
+  const goHome = () => {
+    if (tab === "juego" && gameActive) { setConfirmExit(true); return; }
+    if (tab === "inicio") { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    setTab("inicio");
+  };
 
   useEffect(() => {
     if (typeof document !== "undefined") document.title = "SequIA — El costo oculto de la IA";
@@ -279,18 +288,19 @@ function App() {
     <div style={styles.app}>
       <GlobalStyle />
       <div style={styles.shell}>
-        <Header onInstallClick={() => setShowInstallGuide(true)} />
+        <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} />
         {tab !== "inicio" && (
-          <button onClick={() => setTab("inicio")} className="hi-btn" style={{ ...ghostBtn, marginBottom: 14 }}>
+          <button onClick={goHome} className="hi-btn" style={{ ...ghostBtn, marginBottom: 14 }}>
             ← Volver al inicio
           </button>
         )}
 
         {tab === "inicio" && <Inicio setTab={setTab} />}
         {tab === "laboratorio" && <LaboratorioTab setTab={setTab} />}
-        {tab === "juego" && <Juego />}
+        {tab === "juego" && <Juego onActiveChange={setGameActive} />}
       </div>
       {showInstallGuide && <InstallGuideModal onClose={() => setShowInstallGuide(false)} />}
+      {confirmExit && <ConfirmExitModal onCancel={() => setConfirmExit(false)} onConfirm={() => { setConfirmExit(false); setTab("inicio"); }} />}
       {showTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -508,14 +518,60 @@ function InstallGuideModal({ onClose }) {
   );
 }
 
-function Header({ onInstallClick }) {
+// Aviso antes de salir de una partida en curso: volver al inicio la descarta.
+function ConfirmExitModal({ onCancel, onConfirm }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div
+      onClick={onCancel}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-exit-title"
+      style={{ position: "fixed", inset: 0, background: "rgba(20,24,31,0.55)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "var(--font-body)" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: "var(--paper)", borderRadius: 16, padding: "22px 20px 18px", width: "100%", maxWidth: 360, boxShadow: "0 16px 40px rgba(20,24,31,0.28)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--acc-red-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AlertTriangle size={18} color="var(--acc-red)" />
+          </div>
+          <div id="confirm-exit-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>¿Volver al inicio?</div>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 16px" }}>
+          Si salís ahora vas a perder la partida en curso.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button autoFocus onClick={onCancel} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", fontFamily: "var(--font-body)", background: "var(--acc-blue)", color: "#FFFFFF" }}>
+            Seguir jugando
+          </button>
+          <button onClick={onConfirm} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", color: "var(--acc-red)", borderColor: "var(--acc-red)" }}>
+            Salir
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function Header({ onInstallClick, onHomeClick }) {
   return (
     <div style={{ background: "var(--paper)", borderRadius: 10, padding: "16px 20px", marginBottom: 14, borderBottom: "1px solid var(--line)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <BrandMark />
+          <button onClick={onHomeClick} aria-label="Ir al inicio" title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}>
+            <BrandMark />
+          </button>
           <div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>SequIA</h1>
+            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+              <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", cursor: "pointer", textAlign: "left" }}>SequIA</button>
+            </h1>
             <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
             <a
               href="https://sed-de-datos.vercel.app/"
@@ -1730,7 +1786,7 @@ function InfoModal({ info, anchor, onClose, onGuide }) {
   );
 }
 
-function Juego() {
+function Juego({ onActiveChange }) {
   const [zone, setZone] = useState(null);
   const [diffKey, setDiffKey] = useState(null);
   const [state, setState] = useState(null);
@@ -1740,6 +1796,13 @@ function Juego() {
   const [showSetup, setShowSetup] = useState(false);
   const [showZoneNumbers, setShowZoneNumbers] = useState(false);
   const [info, setInfo] = useState(null);
+
+  // Hay "partida en curso" desde que arranca hasta que se muestra el resultado final.
+  const inProgress = !!state && !state.finished;
+  useEffect(() => {
+    if (onActiveChange) onActiveChange(inProgress);
+    return () => { if (onActiveChange) onActiveChange(false); };
+  }, [inProgress, onActiveChange]);
   const [introDismissed, setIntroDismissed] = useState(false);
   const [priorWaterKnowledge, setPriorWaterKnowledge] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
