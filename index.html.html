@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -87,9 +87,7 @@ const Droplets = mkIconNodes([
   ["path", { d: "M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z" }],
   ["path", { d: "M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97" }],
 ]);
-const Sparkles = mkIcon(["M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"]);
 const ChevronDown = mkIcon(["m6 9 6 6 6-6"]);
-const BookOpen = mkIcon(["M12 7v14", "M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"]);
 const ListChecks = mkIconNodes([
   ["path", { d: "m3 7 3 3 3-3" }], ["path", { d: "M6 10V5" }],
   ["path", { d: "M13 6h8" }], ["path", { d: "M13 12h8" }], ["path", { d: "M13 18h8" }],
@@ -173,7 +171,6 @@ const CircleChevronDown = mkIconNodes([
 const SquarePlus = mkIconNodes([
   ["rect", { width: 18, height: 18, x: 3, y: 3, rx: 2 }], ["path", { d: "M8 12h8" }], ["path", { d: "M12 8v8" }],
 ]);
-const X = mkIcon(["M18 6 6 18", "m6 6 12 12"]);
 const Users = mkIconNodes([
   ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }],
   ["circle", { cx: 9, cy: 7, r: 4 }],
@@ -187,10 +184,10 @@ const Shuffle = mkIcon([
   "M14 18h6",
   "m18 14 4 4-4 4",
 ]);
+const X = mkIcon(["M18 6 6 18", "m6 6 12 12"]);
 
 
 
-const STORAGE_KEY = "huellaia:v1";
 
 // --- Datos base, con fuente ---
 // Google, "Measuring the environmental impact of delivering AI at Google Scale" (2025)
@@ -283,13 +280,15 @@ function App() {
       <GlobalStyle />
       <div style={styles.shell}>
         <Header onInstallClick={() => setShowInstallGuide(true)} />
-        <Nav tab={tab} setTab={setTab} />
+        {tab !== "inicio" && (
+          <button onClick={() => setTab("inicio")} className="hi-btn" style={{ ...ghostBtn, marginBottom: 14 }}>
+            ← Volver al inicio
+          </button>
+        )}
 
         {tab === "inicio" && <Inicio setTab={setTab} />}
         {tab === "laboratorio" && <LaboratorioTab setTab={setTab} />}
-        {tab === "aprender" && <Aprender setTab={setTab} />}
         {tab === "juego" && <Juego />}
-        {tab === "fuentes" && <Fuentes setTab={setTab} />}
       </div>
       {showInstallGuide && <InstallGuideModal onClose={() => setShowInstallGuide(false)} />}
       {showTop && (
@@ -313,7 +312,7 @@ function App() {
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
       :root {
         --bg: #F7F4EE;
         --paper: #FFFFFF;
@@ -349,7 +348,6 @@ function GlobalStyle() {
         --font-display: 'Inter', sans-serif;
         --font-body: 'Inter', sans-serif;
         --font-mono: 'IBM Plex Mono', monospace;
-        --font-serif: 'Newsreader', Georgia, Cambria, 'Times New Roman', Times, serif;
       }
       * { box-sizing: border-box; }
       @keyframes glowPulse {
@@ -540,53 +538,6 @@ function Header({ onInstallClick }) {
   );
 }
 
-const NAV_ITEMS = [
-  { id: "inicio", label: "Inicio", icon: Sparkles, color: "var(--acc-blue)" },
-  { id: "aprender", label: "Aprender", icon: BookOpen, color: "var(--acc-blue)" },
-  { id: "laboratorio", label: "Laboratorio", icon: Sliders, color: "var(--acc-blue)" },
-  { id: "fuentes", label: "Fuentes", icon: Link2, color: "var(--acc-blue)" },
-];
-
-function Nav({ tab, setTab }) {
-  const gameActive = tab === "juego";
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <button
-        onClick={() => setTab("juego")}
-        className={gameActive ? "hi-btn" : "hi-btn hi-glow"}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          padding: "14px 16px", borderRadius: 10, border: "none", cursor: "pointer", marginBottom: 6,
-          fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15,
-          background: gameActive ? "var(--dark-panel)" : "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))",
-          color: "var(--on-accent)",
-        }}
-      >
-        <Gamepad2 size={18} /> {gameActive ? "Estás jugando SequIA" : "🎮 Jugar SequIA"}
-      </button>
-
-      <div className="hi-card" style={{ display: "flex", gap: 4, background: "var(--paper-soft)", borderRadius: 4, padding: 4, flexWrap: "wrap" }}>
-        {NAV_ITEMS.map(item => {
-          const Icon = item.icon;
-          const active = tab === item.id;
-          return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="hi-btn" aria-current={active ? "page" : undefined} style={{
-              flex: "1 1 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-              padding: "7px 6px", borderRadius: 3, border: "none", cursor: "pointer",
-              fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 10.5,
-              background: active ? item.color : "transparent",
-              color: active ? "var(--on-accent)" : "var(--ink-soft)",
-              transition: "background .15s, transform .15s"
-            }}>
-              <Icon size={12} /> {item.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 const primaryBtn = {
   background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 6,
   padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
@@ -646,11 +597,19 @@ function Inicio({ setTab }) {
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
             La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio gasto de agua escondido.
           </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => setTab("juego")} className="hi-btn hi-glow" style={{ ...primaryBtn, background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))", color: "#FFFFFF" }}>
-              <Gamepad2 size={14} /> Jugar SequIA
-            </button>
-          </div>
+          <button
+            onClick={() => setTab("juego")}
+            className="hi-btn hi-glow"
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "14px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15,
+              background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))",
+              color: "var(--on-accent)",
+            }}
+          >
+            <Gamepad2 size={18} /> 🎮 Jugar SequIA
+          </button>
         </div>
       </div>
 
@@ -678,9 +637,14 @@ function Inicio({ setTab }) {
             </p>
           </div>
         </div>
-        <button onClick={() => setShowDatos(true)} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginTop: 14 }}>
-          <Link2 size={13} /> Datos y fuentes
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+          <button onClick={() => setTab("laboratorio")} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 140px", justifyContent: "center" }}>
+            <Sliders size={13} /> Laboratorio
+          </button>
+          <button onClick={() => setShowDatos(true)} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 140px", justifyContent: "center" }}>
+            <Link2 size={13} /> Datos y fuentes
+          </button>
+        </div>
       </div>
 
       {showDatos && <DatosFuentesModal onClose={() => setShowDatos(false)} />}
@@ -986,224 +950,9 @@ function ResultBox({ icon: Icon, color, bg, label, value }) {
   );
 }
 
-// Ilustraciones vectoriales para las tarjetas de Aprender: una mini-escena
-// por tema, en el mismo estilo plano y con los mismos colores del resto de
-// la app, en vez de un ícono genérico suelto.
-
-function RefrigerationArt() {
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      <g stroke="var(--acc-orange)" strokeWidth="1.6" fill="none" opacity="0.55" strokeLinecap="round">
-        <path d="M138 40 C 132 28, 145 22, 140 10" />
-        <path d="M150 40 C 145 26, 160 20, 153 6" />
-        <path d="M163 40 C 159 24, 174 18, 166 4" />
-      </g>
-      <rect x="115" y="40" width="70" height="52" rx="4" fill="var(--paper)" opacity="0.5" stroke="var(--acc-orange)" strokeWidth="1" />
-      <g fill="var(--acc-orange)">
-        <circle cx="126" cy="50" r="2.4" />
-        <circle cx="126" cy="61" r="2.4" fill="var(--dark-panel)" />
-        <circle cx="126" cy="72" r="2.4" fill="var(--acc-orange)" />
-      </g>
-      <g stroke="var(--paper)" strokeWidth="2" opacity="0.6">
-        <line x1="136" y1="47" x2="176" y2="47" />
-        <line x1="136" y1="58" x2="176" y2="58" />
-        <line x1="136" y1="69" x2="176" y2="69" />
-        <line x1="136" y1="80" x2="176" y2="80" />
-      </g>
-      <g fill="var(--dark-panel)" opacity="0.4">
-        <circle cx="103" cy="78" r="3" />
-        <circle cx="197" cy="66" r="2.5" />
-        <circle cx="108" cy="60" r="2" />
-      </g>
-    </svg>
-  );
-}
-
-// Electricidad: una torre de alta tensión con un rayo, y gotas cayendo desde
-// los cables — el agua indirecta escondida detrás de generar electricidad.
-function ElectricityArt() {
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      <g stroke="var(--acc-blue)" strokeWidth="2" fill="none" opacity="0.7" strokeLinecap="round">
-        <path d="M150 15 L150 85" />
-        <path d="M120 30 L180 30" />
-        <path d="M110 50 L190 50" />
-        <path d="M120 70 L180 70" />
-        <path d="M150 15 L130 45" />
-        <path d="M150 15 L170 45" />
-        <path d="M150 85 L130 55" />
-        <path d="M150 85 L170 55" />
-      </g>
-      <path d="M154 34 L145 52 L153 52 L146 68 L163 46 L154 46 Z" fill="var(--dark-panel)" opacity="0.9" />
-      <g fill="var(--acc-blue)" opacity="0.55">
-        <circle cx="115" cy="60" r="2.6" />
-        <circle cx="185" cy="62" r="2.6" />
-        <circle cx="122" cy="78" r="2" />
-        <circle cx="178" cy="80" r="2" />
-      </g>
-    </svg>
-  );
-}
-
-// Escala: una gota chica en el centro con más y más gotas creciendo hacia
-// afuera, representando cómo un gasto mínimo se multiplica a escala global.
-function ScaleArt() {
-  const ring = (r, n, size, opacity) => Array.from({ length: n }, (_, i) => {
-    const angle = (i / n) * Math.PI * 2;
-    return { x: 150 + Math.cos(angle) * r, y: 50 + Math.sin(angle) * r * 0.55, size, opacity };
-  });
-  const drops = [...ring(20, 5, 3, 0.5), ...ring(38, 8, 3.6, 0.4), ...ring(58, 10, 4.2, 0.3)];
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      {drops.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={d.size} fill="var(--acc-orange)" opacity={d.opacity} />
-      ))}
-      <circle cx="150" cy="50" r="8" fill="var(--acc-orange)" />
-      <circle cx="147" cy="47" r="2" fill="var(--paper)" opacity="0.6" />
-    </svg>
-  );
-}
-
-// Entrenamiento: un rack más alto de lo normal con una barra de progreso
-// cargando, y una gota grande al lado — mucho más consumo que el uso diario.
-function TrainingArt() {
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      <rect x="128" y="12" width="46" height="76" rx="4" fill="var(--paper)" opacity="0.5" stroke="var(--acc-orange)" strokeWidth="1" />
-      <g fill="var(--acc-orange)">
-        <circle cx="137" cy="22" r="2.2" />
-        <circle cx="137" cy="33" r="2.2" fill="var(--dark-panel)" />
-        <circle cx="137" cy="44" r="2.2" />
-        <circle cx="137" cy="55" r="2.2" fill="var(--dark-panel)" />
-        <circle cx="137" cy="66" r="2.2" />
-        <circle cx="137" cy="77" r="2.2" fill="var(--dark-panel)" />
-      </g>
-      <g stroke="var(--paper)" strokeWidth="1.6" opacity="0.6">
-        <line x1="145" y1="20" x2="166" y2="20" />
-        <line x1="145" y1="31" x2="166" y2="31" />
-        <line x1="145" y1="42" x2="166" y2="42" />
-        <line x1="145" y1="53" x2="166" y2="53" />
-        <line x1="145" y1="64" x2="166" y2="64" />
-        <line x1="145" y1="75" x2="166" y2="75" />
-      </g>
-      <path d="M205 20 C195 38, 185 52, 205 62 C225 52, 215 38, 205 20 Z" fill="var(--acc-orange)" opacity="0.85" />
-      <path d="M200 15 C190 33, 180 47, 200 57 C220 47, 210 33, 200 15 Z" fill="none" stroke="var(--acc-orange)" strokeWidth="1" opacity="0.35" />
-    </svg>
-  );
-}
-
-// Transparencia: dos reportes superpuestos con cifras distintas y una lupa,
-// mostrando que cada empresa mide y cuenta las cosas de otra manera.
-function TransparencyArt() {
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      <rect x="118" y="22" width="54" height="66" rx="4" fill="var(--paper)" opacity="0.55" stroke="var(--acc-blue)" strokeWidth="1" transform="rotate(-6 145 55)" />
-      <rect x="132" y="18" width="54" height="66" rx="4" fill="var(--paper)" opacity="0.75" stroke="var(--acc-blue)" strokeWidth="1.2" transform="rotate(4 159 51)" />
-      <g stroke="var(--acc-blue)" strokeWidth="1.6" opacity="0.7" transform="rotate(4 159 51)">
-        <line x1="140" y1="32" x2="178" y2="32" />
-        <line x1="140" y1="42" x2="170" y2="42" />
-        <line x1="140" y1="52" x2="178" y2="52" />
-        <line x1="140" y1="62" x2="164" y2="62" />
-      </g>
-      <circle cx="205" cy="64" r="12" fill="none" stroke="var(--dark-panel)" strokeWidth="2.4" opacity="0.85" />
-      <line x1="213" y1="72" x2="222" y2="81" stroke="var(--dark-panel)" strokeWidth="2.4" strokeLinecap="round" opacity="0.85" />
-    </svg>
-  );
-}
-
-// Contexto: una taza de café bien grande al lado de una gota chiquita — la
-// comparación de escala que ayuda a poner el número en perspectiva.
-function ContextArt() {
-  return (
-    <svg viewBox="0 0 300 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
-      <path d="M118 38 h48 v30 a24 20 0 0 1 -48 0 Z" fill="var(--paper)" opacity="0.6" stroke="var(--acc-orange)" strokeWidth="1.4" />
-      <path d="M166 44 q16 -2 16 12 q0 14 -16 12" fill="none" stroke="var(--acc-orange)" strokeWidth="2" opacity="0.7" />
-      <g stroke="var(--acc-orange)" strokeWidth="1.6" fill="none" opacity="0.5" strokeLinecap="round">
-        <path d="M128 30 C 125 24, 132 20, 129 14" />
-        <path d="M140 30 C 137 24, 144 20, 141 14" />
-      </g>
-      <path d="M205 58 C 201 65, 197 70, 205 76 C 213 70, 209 65, 205 58 Z" fill="var(--dark-panel)" opacity="0.85" />
-    </svg>
-  );
-}
-
-const ARTICLES = [
-  {
-    icon: Waves, color: "acc-orange", topic: "Refrigeración", art: RefrigerationArt,
-    title: "El agua que ves: enfriar los servidores",
-    text: "Muchos centros de datos usan torres de refrigeración evaporativa: el agua absorbe el calor y se evapora. Hasta un 85% de esa agua no vuelve a la red de distribución."
-  },
-  {
-    icon: Factory, color: "acc-blue", topic: "Electricidad", art: ElectricityArt,
-    title: "El agua que no ves: generar la electricidad",
-    text: "Las centrales térmicas (carbón, gas, nuclear) usan grandes volúmenes de agua para producir vapor y enfriar turbinas. La eólica y la solar fotovoltaica consumen mucha menos."
-  },
-  {
-    icon: Sparkles, color: "acc-orange", topic: "Escala", art: ScaleArt,
-    title: "Una gota se hace un océano",
-    text: "0,26 mL por consulta parece nada. Pero ChatGPT solo procesa unos 2.500 millones de mensajes por día (TechCrunch, 2025) — multiplicado por esa escala, la cifra global se mide en miles de millones de litros por año."
-  },
-  {
-    icon: Server, color: "acc-orange", topic: "Entrenamiento", art: TrainingArt,
-    title: "Entrenar cuesta más que usar",
-    text: "Un estudio estimó que entrenar GPT-3 evaporó unos 700.000 litros de agua directa para refrigeración, y unos 5,4 millones de litros si se suma el consumo indirecto."
-  },
-  {
-    icon: Info, color: "acc-blue", topic: "Transparencia", art: TransparencyArt,
-    title: "No todas las empresas cuentan lo mismo",
-    text: "Google reportó 0,26 mL de agua directa por consulta mediana en Gemini. Mistral reportó 45 mL para una consulta de 400 tokens, incluyendo agua directa e indirecta. Son metodologías distintas, no siempre comparables."
-  },
-  {
-    icon: Droplets, color: "acc-orange", topic: "Contexto", art: ContextArt,
-    title: "¿Es mucho o es poco?",
-    text: "Una sola consulta consume menos agua que preparar una taza de café. El problema no es la consulta individual, sino la escala y la falta de datos claros sobre el consumo indirecto."
-  },
-];
-
-function Aprender({ setTab }) {
-  return (
-    <div>
-      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14, borderTop: "4px solid var(--acc-blue)" }}>
-        <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>ARTÍCULOS</span>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: "var(--ink)", margin: "10px 0 4px" }}>Ideas para desarrollar el tema</div>
-        <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
-          Seis ideas clave para entender de dónde viene el costo hídrico y eléctrico de la IA.
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {ARTICLES.map((a, i) => {
-          const Icon = a.icon;
-          const Art = a.art;
-          return (
-            <div key={a.title} className="hi-card hi-lift" style={{ background: "var(--paper)", borderRadius: 10, overflow: "hidden", animationDelay: `${i * 50}ms`, border: "1px solid var(--line)" }}>
-              <div style={{
-                height: 96, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-                background: `linear-gradient(160deg, var(--${a.color}-bg), var(--bg))`
-              }}>
-                {Art ? <Art /> : <Icon size={30} color={`var(--${a.color})`} strokeWidth={1.6} />}
-              </div>
-              <div style={{ padding: 16 }}>
-                <span style={{
-                  display: "inline-block", fontSize: 10.5, fontWeight: 700, color: `var(--${a.color})`,
-                  background: `var(--${a.color}-bg)`, borderRadius: 20, padding: "3px 10px", marginBottom: 10
-                }}>{a.topic}</span>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 6, lineHeight: 1.3 }}>{a.title}</div>
-                <p style={{ fontFamily: "var(--font-serif)", fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6 }}>{a.text}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <PlayCTA setTab={setTab} text="Ya leíste la teoría, ahora ponela a prueba" />
-    </div>
-  );
-}
-
 // Las "trivia" (Mito/Dato/Depende) aparecen cada pocos días de partida y
 // están basadas en los mismos datos y fuentes que el resto de la app (ver
-// pestaña Fuentes).
+// "Datos y fuentes" del inicio).
 const TRIVIA_BANK = [
   {
     id: "t1",
@@ -2935,27 +2684,6 @@ function DatosFuentesModal({ onClose }) {
 
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>Fuentes</div>
         <SourcesList />
-      </div>
-    </div>
-  );
-}
-
-function Fuentes({ setTab }) {
-  return (
-    <div>
-      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14, borderTop: "4px solid var(--acc-blue)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <Link2 size={17} color="var(--acc-blue)" />
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Fuentes</div>
-        </div>
-        <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
-          Todos los datos de esta app están basados en estudios y disclosures públicos. Podés leer el original en cada enlace. El simulador "SequIA" usa como base principal la metodología que Google publicó para Gemini — otras empresas y estudios miden distinto y a veces dan cifras más altas o más bajas; lo aclaramos en cada sección donde puede generar confusión.
-        </p>
-      </div>
-      <SourcesList />
-
-      <div style={{ marginTop: 6 }}>
-        <PlayCTA setTab={setTab} text="Con todas las fuentes a mano, probá tomar vos las decisiones" />
       </div>
     </div>
   );
