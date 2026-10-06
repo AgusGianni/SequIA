@@ -287,6 +287,7 @@ function App() {
   return (
     <div style={styles.app}>
       <GlobalStyle />
+      <BackgroundFX />
       <div style={styles.shell}>
         <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} />
         {tab !== "inicio" && (
@@ -411,6 +412,24 @@ function GlobalStyle() {
       .hi-range::-moz-range-thumb {
         width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 3px solid var(--thumb-color, var(--acc-blue));
       }
+      .hi-fx { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+      .hi-blob { position: absolute; border-radius: 50%; filter: blur(8px); animation: blobFloat 18s ease-in-out infinite; }
+      .hi-blob-b { animation-duration: 24s; animation-direction: reverse; }
+      @keyframes blobFloat { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, 24px, 0) scale(1.12); } }
+      .hi-drop { position: absolute; bottom: -30px; opacity: 0; animation: dropRise 18s linear infinite; }
+      @keyframes dropRise {
+        0% { transform: translate3d(0, 0, 0); opacity: 0; }
+        10% { opacity: 0.55; }
+        85% { opacity: 0.4; }
+        100% { transform: translate3d(var(--sway, 20px), -115vh, 0); opacity: 0; }
+      }
+      .hi-wave { position: absolute; bottom: 0; left: 0; animation: waveShift 9s linear infinite; }
+      .hi-wave-b { animation-duration: 14s; animation-direction: reverse; }
+      @keyframes waveShift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes popIn { 0% { transform: scale(0.4) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+      .hi-pop { display: inline-block; animation: popIn .7s cubic-bezier(.2,.8,.3,1.2) both; }
+      @keyframes confettiBurst { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+      .hi-confetti { position: absolute; left: 50%; top: 46px; width: 8px; height: 12px; border-radius: 2px; animation: confettiBurst 1.7s ease-out both; }
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {
           animation-duration: 0.001ms !important;
@@ -423,6 +442,81 @@ function GlobalStyle() {
   );
 }
 
+// Fondo animado: gotas que suben despacio y manchas de color que flotan.
+// Es solo decoración (aria-hidden, sin interacción) y se apaga con
+// "reducir movimiento" gracias a la regla global de prefers-reduced-motion.
+function BackgroundFX() {
+  const drops = [
+    { left: "4%", size: 14, dur: 17, delay: -2, sway: 24, color: "var(--acc-blue)" },
+    { left: "11%", size: 9, dur: 22, delay: -11, sway: -18, color: "var(--logo-cyan)" },
+    { left: "18%", size: 18, dur: 20, delay: -6, sway: 22, color: "var(--acc-blue)" },
+    { left: "25%", size: 11, dur: 25, delay: -16, sway: -26, color: "var(--logo-cyan)" },
+    { left: "33%", size: 16, dur: 19, delay: -9, sway: 20, color: "var(--acc-blue)" },
+    { left: "40%", size: 8, dur: 23, delay: -3, sway: -14, color: "var(--logo-cyan)" },
+    { left: "48%", size: 20, dur: 21, delay: -13, sway: 26, color: "var(--logo-cyan)" },
+    { left: "55%", size: 12, dur: 18, delay: -7, sway: -20, color: "var(--acc-blue)" },
+    { left: "62%", size: 15, dur: 24, delay: -18, sway: 18, color: "var(--logo-cyan)" },
+    { left: "69%", size: 9, dur: 16, delay: -1, sway: -24, color: "var(--acc-blue)" },
+    { left: "76%", size: 17, dur: 22, delay: -10, sway: 22, color: "var(--acc-blue)" },
+    { left: "83%", size: 10, dur: 26, delay: -20, sway: -16, color: "var(--logo-cyan)" },
+    { left: "90%", size: 14, dur: 19, delay: -5, sway: 20, color: "var(--logo-cyan)" },
+    { left: "96%", size: 11, dur: 23, delay: -14, sway: -22, color: "var(--acc-blue)" },
+  ];
+  return (
+    <div aria-hidden="true" className="hi-fx">
+      <span className="hi-blob" style={{ top: "-8%", left: "-10%", width: 340, height: 340, background: "radial-gradient(circle, rgba(79,214,255,0.28), transparent 70%)" }} />
+      <span className="hi-blob hi-blob-b" style={{ bottom: "-10%", right: "-12%", width: 380, height: 380, background: "radial-gradient(circle, rgba(255,106,0,0.16), transparent 70%)" }} />
+      {drops.map((d, i) => (
+        <svg key={i} className="hi-drop" width={d.size} height={Math.round(d.size * 1.3)} viewBox="0 0 12 16"
+          style={{ left: d.left, animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s`, "--sway": `${d.sway}px` }}>
+          <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill={d.color} />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+// Olas animadas al pie de la tarjeta principal del inicio.
+function HeroWaves() {
+  return (
+    <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 36, overflow: "hidden", pointerEvents: "none" }}>
+      <svg className="hi-wave hi-wave-b" width="200%" height="36" viewBox="0 0 1200 36" preserveAspectRatio="none">
+        <path d="M0 20 Q75 6 150 20 T300 20 T450 20 T600 20 T750 20 T900 20 T1050 20 T1200 20 V36 H0 Z" fill="rgba(79,214,255,0.30)" />
+      </svg>
+      <svg className="hi-wave" width="200%" height="36" viewBox="0 0 1200 36" preserveAspectRatio="none">
+        <path d="M0 24 Q75 10 150 24 T300 24 T450 24 T600 24 T750 24 T900 24 T1050 24 T1200 24 V36 H0 Z" fill="rgba(41,82,227,0.16)" />
+      </svg>
+    </div>
+  );
+}
+
+// Confeti de un solo disparo para los finales positivos.
+function Confetti() {
+  const pieces = [
+    { dx: -150, dy: 40, rot: 260, c: "var(--acc-blue)", d: 0 },
+    { dx: -110, dy: -20, rot: -200, c: "var(--acc-orange)", d: 0.05 },
+    { dx: -75, dy: 90, rot: 340, c: "var(--logo-cyan)", d: 0.1 },
+    { dx: -40, dy: -40, rot: -280, c: "var(--acc-green)", d: 0 },
+    { dx: -15, dy: 120, rot: 180, c: "var(--acc-purple)", d: 0.15 },
+    { dx: 20, dy: -50, rot: 300, c: "var(--acc-blue)", d: 0.08 },
+    { dx: 50, dy: 100, rot: -240, c: "var(--acc-orange)", d: 0.02 },
+    { dx: 85, dy: -10, rot: 220, c: "var(--logo-cyan)", d: 0.12 },
+    { dx: 120, dy: 70, rot: -320, c: "var(--acc-green)", d: 0.06 },
+    { dx: 150, dy: 20, rot: 280, c: "var(--acc-purple)", d: 0.1 },
+    { dx: -95, dy: 130, rot: -160, c: "var(--acc-blue)", d: 0.18 },
+    { dx: 100, dy: 135, rot: 200, c: "var(--acc-orange)", d: 0.14 },
+    { dx: -5, dy: 60, rot: 120, c: "var(--logo-cyan)", d: 0.2 },
+    { dx: 65, dy: 45, rot: -90, c: "var(--acc-green)", d: 0.04 },
+  ];
+  return (
+    <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {pieces.map((p, i) => (
+        <span key={i} className="hi-confetti" style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy}px`, "--rot": `${p.rot}deg`, background: p.c, animationDelay: `${p.d}s` }} />
+      ))}
+    </div>
+  );
+}
+
 const styles = {
   app: {
     minHeight: "100%", padding: "24px 12px", fontFamily: "var(--font-body)", color: "var(--ink)",
@@ -430,7 +524,7 @@ const styles = {
     backgroundImage: "radial-gradient(rgba(41,82,227,0.16) 1.3px, transparent 1.3px)",
     backgroundSize: "22px 22px",
   },
-  shell: { maxWidth: 720, margin: "0 auto" },
+  shell: { maxWidth: 720, margin: "0 auto", position: "relative" },
 };
 
 const splashStyles = {
@@ -643,8 +737,9 @@ function Inicio({ setTab }) {
   const [showDatos, setShowDatos] = useState(false);
   return (
     <div>
-      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px 48px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
         <HeroGlyph />
+        <HeroWaves />
         <div style={{ position: "relative" }}>
           <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>◈ El costo oculto de la IA</span>
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
@@ -1803,8 +1898,6 @@ function Juego({ onActiveChange }) {
     if (onActiveChange) onActiveChange(inProgress);
     return () => { if (onActiveChange) onActiveChange(false); };
   }, [inProgress, onActiveChange]);
-  const [introDismissed, setIntroDismissed] = useState(false);
-  const [priorWaterKnowledge, setPriorWaterKnowledge] = useState([]);
   const [showGuide, setShowGuide] = useState(false);
 
   const startGame = (key) => {
@@ -1821,8 +1914,6 @@ function Juego({ onActiveChange }) {
     setDiffKey(key);
     setState(fresh);
     setChosen(null);
-    setIntroDismissed(false);
-    setPriorWaterKnowledge([]);
   };
 
   const resolveEventChoice = (optionId) => {
@@ -2149,8 +2240,6 @@ function Juego({ onActiveChange }) {
     setDiffKey(null);
     setChosen(null);
     setZone(null);
-    setIntroDismissed(false);
-    setPriorWaterKnowledge([]);
   };
 
   if (state.finished) {
@@ -2163,8 +2252,9 @@ function Juego({ onActiveChange }) {
 
     return (
       <div>
-        <div className="hi-card" style={{ background: ending.bg, borderRadius: 12, padding: "22px 20px", marginBottom: 14, textAlign: "center", border: `1px solid ${ending.color}` }}>
-          <div style={{ fontSize: 34, marginBottom: 6 }}>{ending.emoji}</div>
+        <div className="hi-card" style={{ background: ending.bg, borderRadius: 12, padding: "22px 20px", marginBottom: 14, textAlign: "center", border: `1px solid ${ending.color}`, position: "relative", overflow: "hidden" }}>
+          {(ending.id === "innovador" || ending.id === "sostenible") && <Confetti />}
+          <div className="hi-pop" style={{ fontSize: 34, marginBottom: 6 }}>{ending.emoji}</div>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: ending.color, marginBottom: 6 }}>{ending.title}</div>
           <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 auto", maxWidth: 480 }}>{ending.tagline}</p>
         </div>
@@ -2245,7 +2335,7 @@ function Juego({ onActiveChange }) {
             </div>
           </div>
           <p style={{ fontSize: 11.5, color: "var(--ink-soft)", lineHeight: 1.5, margin: 0 }}>
-            Antes de jugar dijiste que ya conocías {priorWaterKnowledge.length} de las 3 formas de consumo de agua de la IA.
+            La cifra de agua de infraestructura es una aproximación ilustrativa: es muy difícil de medir con precisión por servidor.
           </p>
         </div>
 
@@ -2260,54 +2350,6 @@ function Juego({ onActiveChange }) {
         <button onClick={restart} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center" }}>
           <RotateCcw size={14} /> Jugar de nuevo
         </button>
-      </div>
-    );
-  }
-
-  if (!introDismissed) {
-    const WATER_TYPES = [
-      { id: "direct", label: "Agua directa", desc: "La que se usa para refrigerar los servidores del centro de datos." },
-      { id: "indirect", label: "Agua indirecta", desc: "La que se gasta generando la electricidad que alimenta al centro de datos." },
-      { id: "infra", label: "Agua de infraestructura", desc: "La que se gasta fabricando el hardware: minería, semiconductores, ensamblaje." },
-    ];
-    const toggleKnown = (id) => {
-      setPriorWaterKnowledge(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-    };
-    return (
-      <div>
-        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14, borderTop: "4px solid var(--acc-teal)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <Droplets size={17} color="var(--acc-teal)" />
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-teal)" }}>El agua invisible</div>
-          </div>
-          <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 14px" }}>
-            La huella hídrica de un centro de datos de IA no es una sola cosa: se reparte en tres tipos bien distintos. Antes de arrancar, marcá cuáles ya conocías.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-            {WATER_TYPES.map(w => {
-              const known = priorWaterKnowledge.includes(w.id);
-              return (
-                <button key={w.id} onClick={() => toggleKnown(w.id)} className="hi-btn" style={{
-                  textAlign: "left", padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-                  border: `1px solid ${known ? "var(--acc-teal)" : "var(--line)"}`,
-                  background: known ? "var(--acc-teal-bg)" : "var(--paper-soft)",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                    {known ? <CheckCircle2 size={14} color="var(--acc-teal)" /> : <div style={{ width: 14, height: 14, borderRadius: "50%", border: "1px solid var(--ink-soft)" }} />}
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{w.label}</span>
-                  </div>
-                  <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "0 0 0 22px" }}>{w.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-          <p style={{ fontSize: 10.5, color: "var(--ink-soft)", fontStyle: "italic", margin: "0 0 14px" }}>
-            La cifra de agua de infraestructura que vas a ver en el resultado final es una aproximación ilustrativa — es muy difícil de medir con precisión por servidor.
-          </p>
-          <button onClick={() => setIntroDismissed(true)} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center" }}>
-            Empezar a jugar <ArrowRightIcon />
-          </button>
-        </div>
       </div>
     );
   }
@@ -2332,6 +2374,18 @@ function Juego({ onActiveChange }) {
         <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: 0 }}>
           Atendé consultas de IA sin descuidar el agua, la electricidad y tu reputación pública.
         </p>
+        {(() => {
+          const done = state.dayResult ? state.day : state.day - 1;
+          const pct = Math.max(0, Math.min(100, (done / diff.days) * 100));
+          return (
+            <div style={{ position: "relative", height: 8, borderRadius: 4, background: "var(--paper-soft)", border: "1px solid var(--line)", margin: "14px 4px 4px" }} role="progressbar" aria-valuemin={0} aria-valuemax={diff.days} aria-valuenow={done} aria-label="Avance de la partida">
+              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, var(--acc-blue), var(--logo-cyan))", transition: "width .6s ease" }} />
+              <svg width="16" height="20" viewBox="0 0 12 16" style={{ position: "absolute", top: "50%", left: `${pct}%`, transform: "translate(-50%, -52%)", transition: "left .6s ease", filter: "drop-shadow(0 2px 3px rgba(41,82,227,0.35))" }} aria-hidden="true">
+                <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
+              </svg>
+            </div>
+          );
+        })()}
       </div>
 
       {!state.dayResult && state.demand != null && (() => {
