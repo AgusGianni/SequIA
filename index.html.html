@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -289,7 +289,7 @@ function App() {
       <GlobalStyle />
       <BackgroundFX />
       <div style={styles.shell}>
-        <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} />
+        <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} compact={tab !== "inicio"} />
         {tab !== "inicio" && (
           <button onClick={goHome} className="hi-btn" style={{ ...ghostBtn, marginBottom: 14 }}>
             ← Volver al inicio
@@ -323,7 +323,7 @@ function App() {
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap');
       :root {
         --bg: #F7F4EE;
         --paper: #FFFFFF;
@@ -356,7 +356,7 @@ function GlobalStyle() {
         --acc-orange: #FF6A00;
         --acc-orange-bg: #FFE9DA;
         --logo-cyan: #4FD6FF;
-        --font-display: 'Inter', sans-serif;
+        --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
         --font-body: 'Inter', sans-serif;
         --font-mono: 'IBM Plex Mono', monospace;
       }
@@ -412,6 +412,23 @@ function GlobalStyle() {
       .hi-range::-moz-range-thumb {
         width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 3px solid var(--thumb-color, var(--acc-blue));
       }
+      .mk { background-image: linear-gradient(transparent 42%, var(--mk, #FFD84D) 42%, var(--mk, #FFD84D) 92%, transparent 92%); background-repeat: no-repeat; background-size: 0% 100%; animation: mkIn .9s .35s cubic-bezier(.3,.7,.2,1) forwards; padding: 0 .12em; margin: 0 -.12em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+      .mk-cyan { --mk: rgba(79,214,255,0.55); }
+      .mk-blue { --mk: #A9BEFA; color: var(--dark-panel); font-weight: 700; }
+      .mk-orange { --mk: rgba(255,106,0,0.32); }
+      @keyframes mkIn { to { background-size: 100% 100%; } }
+      .hi-ink-rest { border: 1.5px solid var(--ink) !important; box-shadow: 3px 3px 0 var(--ink); }
+      .hi-ink { border: 2px solid var(--ink) !important; box-shadow: 4px 4px 0 var(--ink); transform: rotate(-.4deg); }
+      .hi-water { position: fixed; left: 0; right: 0; bottom: 0; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden;
+        opacity: min(1, calc(var(--water-lv, 0) * 40)); transform: translateY(calc((1 - var(--water-lv, 0)) * 100% + 6px)); transition: transform 1.8s cubic-bezier(.3,.7,.2,1); }
+      .hi-water-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+      .hi-water-layer::before { content: ""; position: absolute; left: 0; top: 0; width: 200%; height: 22px; background-repeat: repeat-x; background-size: 50% 22px; animation: waterWave 9s linear infinite; }
+      .hi-water-layer::after { content: ""; position: absolute; left: 0; right: 0; top: 21px; bottom: 0; background: var(--c); }
+      .hi-water-back { --c: rgba(79,214,255,0.20); }
+      .hi-water-back::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 22' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 V22 H0 Z' fill='rgba(79,214,255,0.20)'/%3E%3C/svg%3E"); }
+      .hi-water-front { --c: rgba(41,82,227,0.12); top: 8px; }
+      .hi-water-front::before { animation-duration: 14s; animation-direction: reverse; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 22' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 V22 H0 Z' fill='rgba(41,82,227,0.12)'/%3E%3C/svg%3E"); }
+      @keyframes waterWave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
       .hi-fx { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
       .hi-blob { position: absolute; border-radius: 50%; filter: blur(8px); animation: blobFloat 18s ease-in-out infinite; }
       .hi-blob-b { animation-duration: 24s; animation-direction: reverse; }
@@ -442,50 +459,13 @@ function GlobalStyle() {
   );
 }
 
-// Fondo animado: gotas que suben despacio y manchas de color que flotan.
-// Es solo decoración (aria-hidden, sin interacción) y se apaga con
-// "reducir movimiento" gracias a la regla global de prefers-reduced-motion.
+// El agua acumulada de la partida sube por la pantalla (misma idea que la
+// calculadora del sitio). El nivel lo escribe Juego en --water-lv (0 a 1).
 function BackgroundFX() {
-  const drops = [
-    { left: "4%", size: 14, dur: 17, delay: -2, sway: 24, color: "var(--acc-blue)" },
-    { left: "11%", size: 9, dur: 22, delay: -11, sway: -18, color: "var(--logo-cyan)" },
-    { left: "18%", size: 18, dur: 20, delay: -6, sway: 22, color: "var(--acc-blue)" },
-    { left: "25%", size: 11, dur: 25, delay: -16, sway: -26, color: "var(--logo-cyan)" },
-    { left: "33%", size: 16, dur: 19, delay: -9, sway: 20, color: "var(--acc-blue)" },
-    { left: "40%", size: 8, dur: 23, delay: -3, sway: -14, color: "var(--logo-cyan)" },
-    { left: "48%", size: 20, dur: 21, delay: -13, sway: 26, color: "var(--logo-cyan)" },
-    { left: "55%", size: 12, dur: 18, delay: -7, sway: -20, color: "var(--acc-blue)" },
-    { left: "62%", size: 15, dur: 24, delay: -18, sway: 18, color: "var(--logo-cyan)" },
-    { left: "69%", size: 9, dur: 16, delay: -1, sway: -24, color: "var(--acc-blue)" },
-    { left: "76%", size: 17, dur: 22, delay: -10, sway: 22, color: "var(--acc-blue)" },
-    { left: "83%", size: 10, dur: 26, delay: -20, sway: -16, color: "var(--logo-cyan)" },
-    { left: "90%", size: 14, dur: 19, delay: -5, sway: 20, color: "var(--logo-cyan)" },
-    { left: "96%", size: 11, dur: 23, delay: -14, sway: -22, color: "var(--acc-blue)" },
-  ];
   return (
-    <div aria-hidden="true" className="hi-fx">
-      <span className="hi-blob" style={{ top: "-8%", left: "-10%", width: 340, height: 340, background: "radial-gradient(circle, rgba(79,214,255,0.28), transparent 70%)" }} />
-      <span className="hi-blob hi-blob-b" style={{ bottom: "-10%", right: "-12%", width: 380, height: 380, background: "radial-gradient(circle, rgba(255,106,0,0.16), transparent 70%)" }} />
-      {drops.map((d, i) => (
-        <svg key={i} className="hi-drop" width={d.size} height={Math.round(d.size * 1.3)} viewBox="0 0 12 16"
-          style={{ left: d.left, animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s`, "--sway": `${d.sway}px` }}>
-          <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill={d.color} />
-        </svg>
-      ))}
-    </div>
-  );
-}
-
-// Olas animadas al pie de la tarjeta principal del inicio.
-function HeroWaves() {
-  return (
-    <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 36, overflow: "hidden", pointerEvents: "none" }}>
-      <svg className="hi-wave hi-wave-b" width="200%" height="36" viewBox="0 0 1200 36" preserveAspectRatio="none">
-        <path d="M0 20 Q75 6 150 20 T300 20 T450 20 T600 20 T750 20 T900 20 T1050 20 T1200 20 V36 H0 Z" fill="rgba(79,214,255,0.30)" />
-      </svg>
-      <svg className="hi-wave" width="200%" height="36" viewBox="0 0 1200 36" preserveAspectRatio="none">
-        <path d="M0 24 Q75 10 150 24 T300 24 T450 24 T600 24 T750 24 T900 24 T1050 24 T1200 24 V36 H0 Z" fill="rgba(41,82,227,0.16)" />
-      </svg>
+    <div aria-hidden="true" className="hi-water">
+      <div className="hi-water-layer hi-water-back" />
+      <div className="hi-water-layer hi-water-front" />
     </div>
   );
 }
@@ -530,7 +510,7 @@ const styles = {
 const splashStyles = {
   wrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", fontFamily: "var(--font-body)", padding: 24, textAlign: "center" },
   badge: { width: 78, height: 78, borderRadius: 20, background: "var(--paper)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(41,82,227,0.12)" },
-  title: { fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 28, color: "var(--ink)", margin: "18px 0 0", letterSpacing: "-0.01em" },
+  title: { fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 28, color: "var(--ink)", margin: "18px 0 0", letterSpacing: "-0.01em" },
   tag: { fontSize: 12.5, color: "var(--ink-soft)", margin: "6px 0 0", letterSpacing: "0.02em" },
   dot: { width: 6, height: 6, borderRadius: "50%", background: "var(--acc-blue)", display: "inline-block" },
 };
@@ -580,7 +560,7 @@ function InstallGuideModal({ onClose }) {
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--acc-blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Smartphone size={19} color="var(--acc-blue)" />
           </div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá SequIA</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá SequIA</div>
         </div>
         <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 18px" }}>
           Agregala a tu pantalla de inicio y abrila como una app, sin pasar por el navegador cada vez.
@@ -635,7 +615,7 @@ function ConfirmExitModal({ onCancel, onConfirm }) {
           <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--acc-red-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AlertTriangle size={18} color="var(--acc-red)" />
           </div>
-          <div id="confirm-exit-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>¿Volver al inicio?</div>
+          <div id="confirm-exit-title" style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>¿Volver al inicio?</div>
         </div>
         <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 16px" }}>
           Si salís ahora vas a perder la partida en curso.
@@ -654,7 +634,7 @@ function ConfirmExitModal({ onCancel, onConfirm }) {
   );
 }
 
-function Header({ onInstallClick, onHomeClick }) {
+function Header({ onInstallClick, onHomeClick, compact }) {
   return (
     <div style={{ background: "var(--paper)", borderRadius: 10, padding: "16px 20px", marginBottom: 14, borderBottom: "1px solid var(--line)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -663,18 +643,18 @@ function Header({ onInstallClick, onHomeClick }) {
             <BrandMark />
           </button>
           <div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+            <h1 style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
               <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", cursor: "pointer", textAlign: "left" }}>SequIA</button>
             </h1>
-            <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
-            <a
+            {!compact && <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0", fontFamily: "var(--font-body)" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
+            {!compact && <a
               href="https://sed-de-datos.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5 }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5, fontFamily: "var(--font-body)" }}
             >
               Sed de Datos <ExternalLink size={10} />
-            </a>
+            </a>}
           </div>
         </div>
         <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn" style={{
@@ -739,14 +719,13 @@ function Inicio({ setTab }) {
     <div>
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px 48px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
         <HeroGlyph />
-        <HeroWaves />
         <div style={{ position: "relative" }}>
           <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>◈ El costo oculto de la IA</span>
-          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
-            Cada consulta a una IA gasta <span style={{ color: "var(--acc-orange)" }}>electricidad</span> y también <span style={{ color: "var(--acc-blue)" }}>agua</span>.
+          <h2 style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
+            Cada consulta a una IA gasta <span className="mk mk-orange">electricidad</span> y también <span className="mk mk-cyan">agua</span>.
           </h2>
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
-            La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio gasto de agua escondido.
+            La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio <span className="mk mk-blue">gasto de agua escondido</span>.
           </p>
           <button
             onClick={() => setTab("juego")}
@@ -759,13 +738,13 @@ function Inicio({ setTab }) {
               color: "var(--on-accent)",
             }}
           >
-            <Gamepad2 size={18} /> 🎮 Jugar SequIA
+            <Gamepad2 size={18} /> Jugar SequIA
           </button>
         </div>
       </div>
 
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--ink)" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--ink)" }}>
           Dos tipos de consumo de agua
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
@@ -825,7 +804,7 @@ function StatBox({ icon: Icon, color, bg, value, label, delay }) {
       }}
     >
       <Icon size={16} color={color} style={{ marginBottom: 8 }} />
-      <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 19, color, marginBottom: 4 }}>{value}</div>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, lineHeight: 1.1, color, marginBottom: 4 }}>{value}</div>
       <div style={{ fontSize: 11, color: "var(--ink-soft)", lineHeight: 1.4 }}>{label}</div>
     </div>
   );
@@ -931,7 +910,7 @@ function PlayCTA({ setTab, text }) {
       }}
     >
       <div style={{ textAlign: "left" }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5 }}>🎮 {text || "¿Y si manejaras vos un centro de datos?"}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14.5 }}>🎮 {text || "¿Y si manejaras vos un centro de datos?"}</div>
         <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>Probá gestionar tu propio centro de datos de IA</div>
       </div>
       <Gamepad2 size={22} />
@@ -1017,7 +996,7 @@ function LaboratorioTab({ setTab }) {
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14, borderTop: "4px solid var(--acc-blue)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <Sliders size={17} color="var(--acc-blue)" />
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Laboratorio de experimentos</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Laboratorio de experimentos</div>
         </div>
         <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 14px" }}>
           Movés las variables y ves cómo cambian el agua y la energía, en vivo. Es una simulación educativa con las mismas constantes que usa el resto de la app, no representa un centro de datos real.
@@ -1053,7 +1032,7 @@ function LaboratorioTab({ setTab }) {
       </div>
 
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 14, color: "var(--ink)" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 14, color: "var(--ink)" }}>
           Agua directa vs. indirecta (por día, en litros)
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1077,7 +1056,7 @@ function LaboratorioTab({ setTab }) {
       </div>
 
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
         <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
           Con estos valores, un solo día equivale a <strong style={{ color: "var(--acc-blue)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
           {" "}<strong style={{ color: "var(--acc-orange)" }}>{numFmt(phoneCharges, 1)} cargas de celular</strong>. Probá mover una sola variable a la vez para ver qué es lo que más pesa.
@@ -1602,7 +1581,7 @@ function HowToPlayGuide({ onDone }) {
         <Icon size={18} color={current.color} />
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)" }}>Paso {step + 1} de {GUIDE_STEPS.length}</span>
       </div>
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: current.color, marginBottom: 10 }}>{current.title}</div>
+      <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: current.color, marginBottom: 10 }}>{current.title}</div>
       <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.7, margin: "0 0 20px" }}>{current.body}</p>
       <div style={{ display: "flex", gap: 8 }}>
         {step > 0 && (
@@ -1845,7 +1824,7 @@ function InfoModal({ info, anchor, onClose, onGuide }) {
             <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--acc-blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Info size={16} color="var(--acc-blue)" />
             </div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", lineHeight: 1.25 }}>{data.title}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", lineHeight: 1.25 }}>{data.title}</div>
           </div>
 
           {data.body.map((p, i) => (
@@ -1891,6 +1870,14 @@ function Juego({ onActiveChange }) {
   const [showSetup, setShowSetup] = useState(false);
   const [showZoneNumbers, setShowZoneNumbers] = useState(false);
   const [info, setInfo] = useState(null);
+
+  // El agua acumulada de la partida sube por la pantalla.
+  const waterL = state ? state.totalWaterL : 0;
+  useEffect(() => {
+    const lv = Math.min(0.35, 0.35 * (1 - Math.exp(-waterL / 15)));
+    document.documentElement.style.setProperty("--water-lv", String(lv));
+  }, [waterL]);
+  useEffect(() => () => document.documentElement.style.setProperty("--water-lv", "0"), []);
 
   // Hay "partida en curso" desde que arranca hasta que se muestra el resultado final.
   const inProgress = !!state && !state.finished;
@@ -1961,7 +1948,7 @@ function Juego({ onActiveChange }) {
           <div style={{ position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Gamepad2 size={17} color="#FFFFFF" />
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}>SequIA</div>
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}>SequIA</div>
             </div>
             <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", margin: "0 0 12px" }}>
               Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta, y todas se pueden ganar.
@@ -2034,7 +2021,7 @@ function Juego({ onActiveChange }) {
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <Gamepad2 size={17} color="var(--acc-blue)" />
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
             {zone.emoji} Construyendo en {zone.label.replace(/^Zona [A-C] — /, "")}. Elegí una dificultad para arrancar.
@@ -2255,13 +2242,13 @@ function Juego({ onActiveChange }) {
         <div className="hi-card" style={{ background: ending.bg, borderRadius: 12, padding: "22px 20px", marginBottom: 14, textAlign: "center", border: `1px solid ${ending.color}`, position: "relative", overflow: "hidden" }}>
           {(ending.id === "innovador" || ending.id === "sostenible") && <Confetti />}
           <div className="hi-pop" style={{ fontSize: 34, marginBottom: 6 }}>{ending.emoji}</div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: ending.color, marginBottom: 6 }}>{ending.title}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 20, color: ending.color, marginBottom: 6 }}>{ending.title}</div>
           <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 auto", maxWidth: 480 }}>{ending.tagline}</p>
         </div>
 
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Ranking de esta partida</span>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{rankTitle(avgScore)} · {avgScore}/100</span>
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{rankTitle(avgScore)} · {avgScore}/100</span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8, marginBottom: 14 }}>
@@ -2289,7 +2276,7 @@ function Juego({ onActiveChange }) {
           <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
               <Compass size={15} color="var(--acc-purple)" />
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "var(--ink)" }}>Bitácora de misiones</div>
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, color: "var(--ink)" }}>Bitácora de misiones</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {state.missionsLog.map((m, i) => (
@@ -2304,7 +2291,7 @@ function Juego({ onActiveChange }) {
 
         {achievements.length > 0 && (
           <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--ink)" }}>Logros de esta partida</div>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--ink)" }}>Logros de esta partida</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {achievements.map(ach => {
                 const Icon = ach.icon;
@@ -2319,7 +2306,7 @@ function Juego({ onActiveChange }) {
         )}
 
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>El agua invisible de tu partida</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>El agua invisible de tu partida</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
               <span style={{ color: "var(--ink-soft)" }}>💧 Agua directa (refrigeración)</span>
@@ -2340,7 +2327,7 @@ function Juego({ onActiveChange }) {
         </div>
 
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
           <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
             Tu data center gastó el equivalente a <strong style={{ color: "var(--acc-teal)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
             {" "}<strong style={{ color: "var(--acc-blue)" }}>{numFmt(phoneCharges, 0)} cargas de celular</strong> a lo largo de {diff.days} días atendiendo consultas de IA en dificultad {diff.label.toLowerCase()}, en {zone.label.toLowerCase()}.
@@ -2362,7 +2349,7 @@ function Juego({ onActiveChange }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Gamepad2 size={17} color="var(--acc-blue)" />
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)" }}>Día {state.day} / {diff.days} · {diff.label} · {zone.emoji}</span>
@@ -2530,7 +2517,7 @@ function Juego({ onActiveChange }) {
 
       {state.eventChoiceResolved && !state.dayResult && (
         <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
             {GAME_ACTION_DEFS.filter(a => a.id !== "save").map(action => {
               const Icon = action.icon;
               const cost = costFor(action, state);
@@ -2541,12 +2528,12 @@ function Juego({ onActiveChange }) {
                 <div key={action.id} style={{ position: "relative" }}>
                 <button
                   onClick={() => !disabledAudit && setChosen(action.id)}
-                  className="hi-btn"
+                  className={active ? "hi-btn hi-ink" : "hi-btn hi-ink-rest"}
                   aria-disabled={disabledAudit}
                   aria-pressed={active}
                   style={{
                     width: "100%", textAlign: "left", padding: "11px 44px 11px 14px", borderRadius: 8, cursor: disabledAudit ? "default" : "pointer",
-                    border: `1px solid ${active ? action.color : "var(--line)"}`,
+                    border: `1px solid ${active ? "var(--ink)" : "var(--line)"}`,
                     background: active ? "var(--paper-soft)" : "var(--paper)",
                     opacity: (affordable && !disabledAudit) ? 1 : 0.5,
                     display: "flex", alignItems: "center", gap: 10
@@ -2560,7 +2547,7 @@ function Juego({ onActiveChange }) {
                       {action.label} {cost > 0 && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--ink-soft)" }}>· ${numFmt(cost, 0)}</span>}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>
-                      {disabledAudit ? "Ya hiciste una auditoría esta partida." : action.desc}
+                      {disabledAudit ? "Ya hiciste una auditoría esta partida." : (active ? action.desc : null)}
                       {!affordable && !disabledAudit ? " (no te alcanza el presupuesto)" : ""}
                     </div>
                   </div>
@@ -2607,7 +2594,7 @@ function Juego({ onActiveChange }) {
 
       {state.dayResult && (
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, border: "1px solid var(--line)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>
             Resultado del día {state.dayResult.day}
           </div>
           {state.dayResult.blocked && (
@@ -2786,7 +2773,7 @@ function DatosFuentesModal({ onClose }) {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <Link2 size={18} color="var(--acc-blue)" />
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Datos y fuentes</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Datos y fuentes</div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 16 }}>
