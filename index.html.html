@@ -382,7 +382,8 @@ function GlobalStyle() {
       .hi-splash-tag { animation: splashFade .4s ease-out .25s both; }
       .hi-row:hover { background: var(--paper-soft); }
       .hi-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-      .hi-btn:active { transform: translateY(0); }
+      .hi-btn:active { transform: translateY(1px) scale(0.985); }
+      .hi-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       .hi-bar { animation: fillBar .5s ease-out both; }
       input[type=range] { accent-color: var(--acc-blue); }
       .hi-btn:focus-visible, input:focus-visible, a:focus-visible {
@@ -443,6 +444,26 @@ function GlobalStyle() {
       .hi-wave { position: absolute; bottom: 0; left: 0; animation: waveShift 9s linear infinite; }
       .hi-wave-b { animation-duration: 14s; animation-direction: reverse; }
       @keyframes waveShift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes gotaJump { 0% { transform: translateY(0) scale(1); } 25% { transform: translateY(-16px) scale(0.95, 1.08); } 50% { transform: translateY(0) scale(1.08, 0.92); } 70% { transform: translateY(-6px); } 100% { transform: translateY(0) scale(1); } }
+      @keyframes gotaShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-6deg); } 40% { transform: translateX(6px) rotate(6deg); } 60% { transform: translateX(-4px) rotate(-3deg); } 80% { transform: translateX(4px) rotate(3deg); } }
+      .hi-jump { animation: gotaJump .9s ease-out 1 !important; }
+      .hi-shake { animation: gotaShake .7s ease-in-out 1 !important; }
+      @keyframes cardPop { 0% { transform: scale(1); } 40% { transform: scale(1.03) rotate(-0.6deg); } 100% { transform: scale(1) rotate(-0.4deg); } }
+      .hi-ink { animation: cardPop .35s ease-out 1; }
+      @keyframes iconWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+      .hi-ink .hi-icon-wig { animation: iconWiggle .5s ease-in-out 1; }
+      @keyframes deltaRise { 0% { opacity: 0; transform: translateY(14px) scale(0.8); } 60% { opacity: 1; transform: translateY(-3px) scale(1.08); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+      .hi-delta { display: inline-flex; animation: deltaRise .6s cubic-bezier(.2,.8,.3,1.2) both; }
+      @keyframes alertShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+      .hi-alert-in { animation: riseIn .35s ease-out both, alertShake .5s .35s ease-in-out 1; }
+      .hi-fall { position: fixed; left: 50%; top: 0; z-index: 40; pointer-events: none; animation: dropFall 1.1s cubic-bezier(.5,0,.9,.6) forwards; }
+      @keyframes dropFall { 0% { transform: translate(-50%, -30px) scale(1); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, calc((1 - var(--water-lv, 0.05)) * 100vh - 24px)) scale(0.6, 1.2); opacity: 0; } }
+      .hi-bob { animation: gotaBob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+      @keyframes gotaBob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(1.03, 0.97); } }
+      .hi-wobble { animation: gotaWobble 3s ease-in-out infinite; transform-origin: 50% 100%; }
+      @keyframes gotaWobble { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+      .hi-bubble { position: relative; background: var(--acc-blue-bg); border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); box-shadow: 3px 3px 0 var(--ink); animation: riseIn .35s ease-out both; }
+      .hi-bubble::before { content: ""; position: absolute; left: -8px; top: 22px; width: 12px; height: 12px; background: var(--acc-blue-bg); border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
       @keyframes popIn { 0% { transform: scale(0.4) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
       .hi-pop { display: inline-block; animation: popIn .7s cubic-bezier(.2,.8,.3,1.2) both; }
       @keyframes confettiBurst { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
@@ -684,41 +705,11 @@ const pillBadge = (color, bg) => ({
   background: bg, border: `1px solid ${color}`, borderRadius: 20, padding: "5px 12px"
 });
 
-// Glifo decorativo grande (gota + circuito) para el fondo del hero de Inicio,
-// reutilizando la misma identidad visual del logo y del hero del juego.
-function HeroGlyph() {
-  return (
-    <svg width="220" height="260" viewBox="0 0 120 150" style={{
-      position: "absolute", right: -30, top: -20, opacity: 0.14, pointerEvents: "none",
-    }} aria-hidden="true">
-      <defs>
-        <linearGradient id="hiHeroGlyphGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--acc-blue)" />
-          <stop offset="100%" stopColor="var(--dark-panel)" />
-        </linearGradient>
-        <clipPath id="hiHeroGlyphClip">
-          <path d="M60 8 C40 45, 14 72, 14 98 C14 120, 35 136, 60 136 C85 136, 106 120, 106 98 C106 72, 80 45, 60 8 Z" />
-        </clipPath>
-      </defs>
-      <path d="M60 8 C40 45, 14 72, 14 98 C14 120, 35 136, 60 136 C85 136, 106 120, 106 98 C106 72, 80 45, 60 8 Z" fill="url(#hiHeroGlyphGrad)" />
-      <g clipPath="url(#hiHeroGlyphClip)" stroke="var(--paper)" strokeWidth="2" fill="none">
-        <line x1="0" y1="55" x2="120" y2="55" />
-        <line x1="0" y1="78" x2="120" y2="78" />
-        <line x1="0" y1="101" x2="120" y2="101" />
-        <line x1="35" y1="8" x2="35" y2="140" />
-        <line x1="60" y1="8" x2="60" y2="140" />
-        <line x1="85" y1="8" x2="85" y2="140" />
-      </g>
-    </svg>
-  );
-}
-
 function Inicio({ setTab }) {
   const [showDatos, setShowDatos] = useState(false);
   return (
     <div>
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px 48px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
-        <HeroGlyph />
         <div style={{ position: "relative" }}>
           <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>◈ El costo oculto de la IA</span>
           <h2 style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
@@ -727,6 +718,10 @@ function Inicio({ setTab }) {
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
             La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio <span className="mk mk-blue">gasto de agua escondido</span>.
           </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 20px 4px" }}>
+            <GotaMascot mood="happy" size={58} />
+            <div className="hi-bubble" style={{ flex: 1 }}>¡Hola! Soy Gota. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.</div>
+          </div>
           <button
             onClick={() => setTab("juego")}
             className="hi-btn hi-glow"
@@ -1269,10 +1264,33 @@ const ZONES = [
 // además de la directa y la indirecta.
 const INFRA_WATER_L_PER_CAPACITY_UNIT = 0.03;
 
+// La dificultad no cambia solo el presupuesto: cambia cuánto juego hay.
+// tier 1 = simple y amable, tier 2 = juego completo, tier 3 = juego elaborado.
 const GAME_DIFFICULTIES = {
-  facil: { label: "Fácil", days: 10, budget: 11000, demandBase: 420, demandStep: 95, severity: 0.75, threshold: 2.6 },
-  normal: { label: "Normal", days: 12, budget: 8000, demandBase: 500, demandStep: 130, severity: 1, threshold: 2.2 },
-  dificil: { label: "Difícil", days: 14, budget: 5800, demandBase: 600, demandStep: 170, severity: 1.3, threshold: 1.8 },
+  facil: {
+    label: "Fácil", tier: 1, days: 5, budget: 12000, demandBase: 420, demandStep: 95, severity: 0.75, threshold: 2.6,
+    actions: ["cooling", "renewable", "capacity"],
+    showRep: false, showEnergy: false, characters: false, trivia: false, missions: false, objectives: false, dataPanel: false, fines: false,
+    harsh: 0.6, repPenalty: 0.5,
+    tagline: "Para jugar tranquilo",
+    bullets: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+  },
+  normal: {
+    label: "Normal", tier: 2, days: 8, budget: 11000, demandBase: 500, demandStep: 130, severity: 1, threshold: 2.2,
+    actions: ["cooling", "renewable", "capacity", "efficiency", "audit"],
+    showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: false, dataPanel: false, fines: true,
+    harsh: 1, repPenalty: 1,
+    tagline: "El juego completo",
+    bullets: ["5 inversiones distintas", "6 misiones con premio", "Personajes que te piden decisiones", "Preguntas Mito / Dato / Depende"],
+  },
+  dificil: {
+    label: "Difícil", tier: 3, days: 10, budget: 10000, demandBase: 600, demandStep: 170, severity: 1.3, threshold: 1.8,
+    actions: ["cooling", "renewable", "capacity", "efficiency", "audit", "resilience"],
+    showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: true, dataPanel: true, fines: true,
+    harsh: 1.6, repPenalty: 1.5,
+    tagline: "Para quien busca el desafío",
+    bullets: ["6 inversiones, con plan de contingencia", "3 objetivos de la dirección con seguimiento en vivo", "Panel de datos: agua por consulta y por tipo", "Crisis más seguidas y reputación más frágil"],
+  },
 };
 
 function freshGameState(diffKey, zone) {
@@ -1322,16 +1340,18 @@ function actionCost(base, purchases) {
 }
 
 const GAME_ACTION_DEFS = [
-  { id: "cooling", label: "Enfriamiento eficiente", icon: Snowflake, color: "var(--acc-teal)", base: 1500,
+  { id: "cooling", label: "Enfriamiento eficiente", easyLabel: "Enfriar mejor", easyDesc: "Gastás menos agua para enfriar los servidores.", icon: Snowflake, color: "var(--acc-teal)", base: 1500,
     desc: "+15% de eficiencia de enfriamiento (reduce el agua directa por consulta)." },
-  { id: "renewable", label: "Energía renovable", icon: Wind, color: "var(--acc-green)", base: 1200,
+  { id: "renewable", label: "Energía renovable", easyLabel: "Energía limpia", easyDesc: "Menos agua escondida en la electricidad que usás.", icon: Wind, color: "var(--acc-green)", base: 1200,
     desc: "+15% de energía renovable (reduce el agua indirecta por consulta)." },
-  { id: "capacity", label: "Ampliar capacidad", icon: Server, color: "var(--acc-blue)", base: 2000,
+  { id: "capacity", label: "Ampliar capacidad", easyLabel: "Más servidores", easyDesc: "Atendés más consultas por día.", icon: Server, color: "var(--acc-blue)", base: 2000,
     desc: "+400 consultas/día de capacidad para no perder demanda." },
   { id: "efficiency", label: "Optimizar modelos", icon: Sliders, color: "var(--acc-mustard)", base: 1800,
     desc: "-10% de electricidad por consulta (modelos más chicos o mejor optimizados)." },
   { id: "audit", label: "Auditoría y transparencia", icon: Award, color: "var(--acc-rose)", base: 800,
     desc: "+8 de reputación al instante y baja el riesgo de escándalos mediáticos." },
+  { id: "resilience", label: "Plan de contingencia", icon: Thermometer, color: "var(--acc-copper)", base: 1400,
+    desc: "Amortigua olas de calor, sequías y recortes de agua: sus efectos pegan hasta 15% menos por cada plan (tope 50%)." },
   { id: "save", label: "Ahorrar presupuesto", icon: Wallet, color: "var(--acc-graphite)", base: 0,
     desc: "No invertís nada este día. Guardás plata para más adelante." },
 ];
@@ -1422,14 +1442,26 @@ const GAME_EVENTS = [
     character: { name: "La periodista", emoji: "📰", color: "var(--acc-rose)" } },
 ];
 
-function pickEvent() {
-  const total = GAME_EVENTS.reduce((s, e) => s + e.weight, 0);
+// El pool de eventos depende de la dificultad: en Fácil solo hay climas y
+// demanda (sin personajes ni decisiones), y en Difícil las crisis pesan más.
+function pickEvent(diff) {
+  const d = diff || GAME_DIFFICULTIES.normal;
+  const pool = GAME_EVENTS
+    .filter(e => d.characters || e.kind === "modifier")
+    .filter(e => !(d.tier === 1 && (e.id === "cutback" || e.id === "drought")))
+    .map(e => {
+      let w = e.weight;
+      if (e.kind === "modifier" && (e.resistible || e.id === "viral")) w *= d.harsh;
+      if (e.kind !== "modifier" && d.tier === 3) w *= 1.5;
+      return { e, w };
+    });
+  const total = pool.reduce((s, x) => s + x.w, 0);
   let r = Math.random() * total;
-  for (const e of GAME_EVENTS) {
-    if (r < e.weight) return e;
-    r -= e.weight;
+  for (const x of pool) {
+    if (r < x.w) return x.e;
+    r -= x.w;
   }
-  return GAME_EVENTS[0];
+  return pool[0].e;
 }
 
 function rollDemand(day, diff, event) {
@@ -1648,6 +1680,25 @@ const INFO_TEXTS = {
     ],
     note: "La falta de transparencia es parte del problema real: muchas empresas no publican datos de agua, o publican solo el agua directa y dejan afuera la indirecta, por eso las cifras no siempre se pueden comparar.",
   },
+  diff_facil: {
+    title: "Dificultad Fácil",
+    body: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+  },
+  diff_normal: {
+    title: "Dificultad Normal",
+    body: ["5 inversiones distintas", "6 misiones con premio", "Personajes que te piden decisiones", "Preguntas Mito / Dato / Depende"],
+  },
+  diff_dificil: {
+    title: "Dificultad Difícil",
+    body: ["6 inversiones, con plan de contingencia", "3 objetivos de la dirección con seguimiento en vivo", "Panel de datos: agua por consulta y por tipo", "Crisis más seguidas y reputación más frágil"],
+  },
+  resilience: {
+    title: "Plan de contingencia",
+    body: [
+      "Una ola de calor, una sequía o un recorte de agua municipal pueden dispararte el gasto de agua de un día para el otro. Un plan de contingencia (reservas, protocolos, refrigeración de respaldo) amortigua ese golpe.",
+      "Cada plan reduce 15% el efecto de esas crisis, hasta un máximo de 50%. Solo disponible en dificultad Difícil.",
+    ],
+  },
   save: {
     title: "Pasar el día y ahorrar",
     body: [
@@ -1724,7 +1775,7 @@ function InfoButton({ onClick, label = "Más información", dark = false, style 
       title={label}
       className="hi-btn"
       style={{
-        width: 24, height: 24, borderRadius: "50%", padding: 0, cursor: "pointer", flexShrink: 0,
+        width: 32, height: 32, borderRadius: "50%", padding: 0, cursor: "pointer", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
         border: dark ? "1px solid rgba(255,255,255,0.35)" : "1px solid var(--line)",
         background: dark ? "rgba(255,255,255,0.1)" : "var(--paper)",
@@ -1732,7 +1783,7 @@ function InfoButton({ onClick, label = "Más información", dark = false, style 
         ...style,
       }}
     >
-      <Info size={13} />
+      <Info size={15} />
     </button>
   );
 }
@@ -1860,6 +1911,169 @@ function InfoModal({ info, anchor, onClose, onGuide }) {
   );
 }
 
+// --- Gota: la mascota. Cambia de cara según cómo viene el agua de la partida ---
+function gotaMood(sustainability) {
+  if (sustainability >= 60) return "happy";
+  if (sustainability >= 45) return "ok";
+  if (sustainability >= 30) return "worried";
+  return "sad";
+}
+
+function GotaMascot({ mood = "ok", size = 56, react }) {
+  const body = { happy: "var(--acc-blue)", ok: "var(--acc-blue)", worried: "#E0A33A", sad: "var(--acc-red)" }[mood];
+  const mouth = { happy: "M44 92 Q60 110 76 92", ok: "M47 98 Q60 103 73 98", worried: "M46 104 Q60 92 74 104", sad: "M44 108 Q60 90 76 108" }[mood];
+  return (
+    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 120 144" className={react === "good" ? "hi-jump" : react === "bad" ? "hi-shake" : mood === "happy" ? "hi-bob" : "hi-wobble"} aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z" fill={body} stroke="var(--ink)" strokeWidth="4" />
+      <path d="M30 100 C30 88, 36 78, 44 68" stroke="rgba(255,255,255,0.5)" strokeWidth="7" strokeLinecap="round" fill="none" />
+      <circle cx="44" cy="80" r="9" fill="#FFFFFF" /><circle cx="76" cy="80" r="9" fill="#FFFFFF" />
+      <circle cx="46" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" /><circle cx="74" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" />
+      {mood === "worried" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 62 L52 68" /><path d="M86 62 L68 68" /></g>}
+      {mood === "sad" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 68 L52 62" /><path d="M86 68 L68 62" /></g>}
+      {mood === "happy" && <g fill="#FFB4A8" opacity="0.8"><circle cx="30" cy="96" r="6" /><circle cx="90" cy="96" r="6" /></g>}
+      <path d={mouth} stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+function gotaSays(state) {
+  const r = state.dayResult;
+  if (r) {
+    if (r.blocked) return "No te alcanzó el presupuesto para eso. ¡Mañana probamos otra cosa!";
+    if (r.unmet > 0) return "Quedaron consultas sin atender. Más servidores ayudan.";
+    if (r.sustainDelta > 0) return "¡Muy bien! Hoy cuidaste el agua.";
+    if (r.sustainDelta < 0) return "Hoy se gastó bastante agua. Probá enfriar mejor o usar energía limpia.";
+    return "Día tranquilo. ¡Seguimos!";
+  }
+  if (state.event && state.event.kind === "modifier" && state.event.id !== "calm") return `${state.event.emoji} ${state.event.label}: ${state.event.desc}`;
+  if (state.day === 1) return "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño.";
+  return "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
+}
+
+const EASY_TIPS = [
+  "El agua de la IA no se gasta solo enfriando servidores: también se gasta para generar la electricidad que usan.",
+  "Un centro de datos en un lugar frío necesita menos agua para enfriarse.",
+  "La energía solar y la eólica usan muy poca agua para producir electricidad.",
+  "Cuando mucha gente usa IA a la vez, hace falta más capacidad y más energía.",
+  "Google midió unos 0,26 mL de agua directa por consulta mediana de Gemini (2025).",
+  "Fabricar los servidores también gasta agua: es el agua de infraestructura.",
+  "Pedirle una imagen a una IA suele gastar más energía que pedirle un texto.",
+  "Muchas empresas no publican cuánta agua usan, por eso es difícil comparar sus cifras.",
+];
+
+// Barra única de "agua cuidada" para la dificultad Fácil (reemplaza los dos medidores).
+function CareBar({ value, label }) {
+  const animated = useAnimatedNumber(value);
+  const color = value >= 60 ? "var(--acc-green)" : value >= 45 ? "var(--acc-teal)" : value >= 30 ? "var(--acc-mustard)" : "var(--acc-red)";
+  const msg = value >= 60 ? "¡Vas muy bien!" : value >= 45 ? "Vas bien, pero ojo con el agua." : value >= 30 ? "El agua está en riesgo." : "¡Hay que cuidar el agua ya!";
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>{label}</span>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color }}>{Math.round(animated)}%</span>
+      </div>
+      <div style={{ height: 14, borderRadius: 7, background: "var(--paper-soft)", border: "1px solid var(--line)", overflow: "hidden" }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label={label}>
+        <div style={{ width: `${Math.max(0, Math.min(100, animated))}%`, height: "100%", background: color, transition: "width .5s ease" }} />
+      </div>
+      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 6 }}>{msg}</div>
+    </div>
+  );
+}
+
+// Meta única de la dificultad Fácil.
+function GoalStrip({ state }) {
+  const ok = state.sustainability >= 50 && state.budget > 0;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px dashed var(--ink)", borderRadius: 10, padding: "12px 14px", marginTop: 12 }}>
+      <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5 }}>
+        🎯 <strong>Tu meta:</strong> llegar al día {state.diff.days} con el agua cuidada en <span className="mk mk-blue">50% o más</span> y con plata en el presupuesto.
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: ok ? "var(--acc-green)" : "var(--acc-mustard)" }}>
+        {ok ? "✓ Ahora mismo vas cumpliendo." : "Todavía no: mirá la barra de agua cuidada."}
+      </div>
+    </div>
+  );
+}
+
+// Objetivos de la dirección (solo dificultad Difícil): medibles, con seguimiento.
+const HARD_OBJECTIVES = [
+  { id: "h1", label: "Agua operativa por consulta de 1,0 mL o menos (promedio)",
+    value: (s) => s.totalServed > 0 ? ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed : 0,
+    fmt: (v) => `${numFmt(v, 2)} mL`, ok: (s) => s.totalServed === 0 || ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed <= 1.0 },
+  { id: "h2", label: "Reputación de 65 o más al cierre",
+    value: (s) => s.reputation, fmt: (v) => `${Math.round(v)}`, ok: (s) => s.reputation >= 65 },
+  { id: "h3", label: "Menos de 5% de consultas sin atender",
+    value: (s) => (100 * s.totalUnmet) / Math.max(1, s.totalServed + s.totalUnmet),
+    fmt: (v) => `${numFmt(v, 1)}%`, ok: (s) => s.totalUnmet / Math.max(1, s.totalServed + s.totalUnmet) < 0.05 },
+];
+
+function ObjectivesPanel({ state, final }) {
+  const met = HARD_OBJECTIVES.filter(o => o.ok(state)).length;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>Objetivos de la dirección</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)" }}>{final ? `${met} de ${HARD_OBJECTIVES.length} cumplidos` : "se evalúan al cierre"}</span>
+      </div>
+      {HARD_OBJECTIVES.map((o, i) => {
+        const ok = o.ok(state);
+        return (
+          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: i ? "1px solid var(--line)" : "none" }}>
+            {ok ? <CheckCircle2 size={15} color="var(--acc-green)" style={{ flexShrink: 0 }} /> : <XCircle size={15} color={final ? "var(--acc-red)" : "var(--acc-mustard)"} style={{ flexShrink: 0 }} />}
+            <span style={{ flex: 1, fontSize: 12, color: "var(--ink)" }}>{o.label}</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: ok ? "var(--acc-green)" : "var(--acc-mustard)" }}>{o.fmt(o.value(state))}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Panel de datos (solo dificultad Difícil): agua por consulta, por tipo y por día.
+function DataPanel({ state, defaultOpen }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const h = state.history;
+  const last = h.length ? h[h.length - 1] : null;
+  const parts = [
+    { name: "Directa", v: state.totalDirectWaterL, c: "var(--acc-teal)" },
+    { name: "Indirecta", v: state.totalIndirectWaterL, c: "var(--acc-blue)" },
+    { name: "Infraestructura", v: state.totalInfraWaterL, c: "var(--acc-graphite)" },
+  ];
+  const total = Math.max(0.0001, parts.reduce((a, p) => a + p.v, 0));
+  const maxDay = Math.max(0.0001, ...h.map(x => x.waterTotalL));
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="hi-btn" style={{ background: "none", border: "none", padding: 0, width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>Panel de datos</span>
+        <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+      </button>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "var(--ink-soft)" }}>
+            <span>Última jornada: <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{last ? `${numFmt((last.waterTotalL * 1000) / Math.max(1, last.served), 2)} mL` : "—"}</strong> por consulta</span>
+            <span>Electricidad: <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{last ? formatEnergy(last.kWh * 1000) : "—"}</strong></span>
+          </div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>De dónde sale el agua</div>
+          <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden", border: "1px solid var(--line)" }}>
+            {parts.map(p => <div key={p.name} style={{ width: `${(p.v / total) * 100}%`, background: p.c, transition: "width .5s ease" }} />)}
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6, fontSize: 11, color: "var(--ink-soft)" }}>
+            {parts.map(p => <span key={p.name} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: p.c }} />{p.name} {numFmt((p.v / total) * 100, 0)}%</span>)}
+          </div>
+          {h.length > 0 && (
+            <>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 4px" }}>Agua por día</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 44 }}>
+                {h.map(x => <div key={x.day} title={`Día ${x.day}: ${numFmt(x.waterTotalL, 2)} L`} style={{ flex: 1, minWidth: 3, height: `${Math.max(6, (x.waterTotalL / maxDay) * 100)}%`, background: "var(--logo-cyan)", border: "1px solid var(--acc-blue)", borderRadius: "2px 2px 0 0" }} />)}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Juego({ onActiveChange }) {
   const [zone, setZone] = useState(null);
   const [diffKey, setDiffKey] = useState(null);
@@ -1889,7 +2103,7 @@ function Juego({ onActiveChange }) {
 
   const startGame = (key) => {
     const fresh = freshGameState(key, zone);
-    let event = pickEvent();
+    let event = pickEvent(fresh.diff);
     if (event.kind === "sources") {
       const scenario = pickSourceScenario([]);
       event = { ...event, scenario };
@@ -2024,27 +2238,28 @@ function Juego({ onActiveChange }) {
             <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
-            {zone.emoji} Construyendo en {zone.label.replace(/^Zona [A-C] — /, "")}. Elegí una dificultad para arrancar.
+            {zone.emoji} Construyendo en {zone.label.replace(/^Zona [A-C] — /, "")}. Elegí cuánto juego querés: cuanto más difícil, más información y más objetivos.
           </p>
         </div>
 
         {Object.entries(GAME_DIFFICULTIES).map(([key, d]) => (
-          <button
-            key={key}
-            onClick={() => startGame(key)}
-            className="hi-btn hi-lift"
-            style={{
-              width: "100%", textAlign: "left", padding: "14px 16px", borderRadius: 8, cursor: "pointer",
-              border: "1px solid var(--line)", background: "var(--paper)", marginBottom: 8,
-              display: "flex", justifyContent: "space-between", alignItems: "center"
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{d.label}</div>
-              <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{d.days} días · presupuesto inicial ${numFmt(Math.round(d.budget * zone.budgetMult), 0)}</div>
-            </div>
-            <ArrowRightIcon />
-          </button>
+          <div key={key} style={{ position: "relative", marginBottom: 14 }}>
+            <button
+              onClick={() => startGame(key)}
+              className="hi-btn hi-ink-rest"
+              style={{ width: "100%", textAlign: "left", padding: "14px 52px 14px 16px", borderRadius: 10, cursor: "pointer", background: "var(--paper)", display: "block" }}
+            >
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>{d.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--acc-blue)", marginTop: 2 }}>{d.tagline}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-soft)" }}>{d.days} días · ${numFmt(Math.round(d.budget * zone.budgetMult), 0)}</span>
+                <span style={{ display: "flex", gap: 4 }} aria-label={`Complejidad ${d.tier} de 3`}>
+                  {[1, 2, 3].map(i => <span key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i <= d.tier ? "var(--acc-orange)" : "var(--line)" }} />)}
+                </span>
+              </div>
+            </button>
+            <InfoButton onClick={(el) => setInfo({ key: "diff_" + key, anchor: el })} label={`Qué incluye la dificultad ${d.label}`} style={{ position: "absolute", top: 14, right: 14 }} />
+          </div>
         ))}
 
         <button onClick={() => setZone(null)} className="hi-btn" style={{ ...ghostBtn, marginTop: 4, marginRight: 8 }}>
@@ -2065,11 +2280,16 @@ function Juego({ onActiveChange }) {
             queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en uno de 6 finales posibles y un ranking de 5 categorías.
           </div>
         )}
+        {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
       </div>
     );
   }
 
   const diff = state.diff;
+  const easy = diff.tier === 1;
+  const mood = gotaMood(state.sustainability);
+  const gotaReact = state.dayResult ? (state.dayResult.sustainDelta > 0 && state.dayResult.unmet === 0 ? "good" : (state.dayResult.sustainDelta < 0 || state.dayResult.unmet > 0 ? "bad" : null)) : null;
+  const visibleActions = GAME_ACTION_DEFS.filter(a => a.id !== "save" && diff.actions.includes(a.id));
 
   const resolveDay = () => {
     if (!chosen) return;
@@ -2118,7 +2338,7 @@ function Juego({ onActiveChange }) {
       sustainDelta += waterPerQueryMl <= diff.threshold ? 2 : -Math.min(10, Math.round((waterPerQueryMl - diff.threshold) * 3 * diff.severity));
     }
     let repDelta = 0;
-    if (unmet > 0) repDelta -= Math.min(8, Math.round(unmet / 200));
+    if (unmet > 0) repDelta -= Math.round(Math.min(8 * diff.repPenalty, (unmet / 200) * diff.repPenalty));
     if (event.id === "goodpress") repDelta += event.reputationBonus;
 
     const newSustainability = Math.max(0, Math.min(100, state.sustainability + sustainDelta));
@@ -2127,7 +2347,7 @@ function Juego({ onActiveChange }) {
 
     const lowSustainStreak = newSustainability < 35 ? state.lowSustainStreak + 1 : 0;
     let fine = 0;
-    if (lowSustainStreak >= 2) {
+    if (diff.fines && lowSustainStreak >= 2) {
       fine = 800;
       budget -= fine;
     }
@@ -2138,7 +2358,7 @@ function Juego({ onActiveChange }) {
     };
 
     // Cada 3 días (incluido el primero) aparece una afirmación Mito/Dato/Depende
-    const triggersTrivia = state.day % 4 === 1;
+    const triggersTrivia = diff.trivia && state.day % 4 === 1;
 
     setState(s => {
       const triviaItem = triggersTrivia ? pickTrivia(s.usedTriviaIds) : null;
@@ -2190,7 +2410,7 @@ function Juego({ onActiveChange }) {
       let missionsLog = s.missionsLog;
       let missionNote = null;
 
-      if (newIdx !== oldIdx) {
+      if (diff.missions && newIdx !== oldIdx) {
         const missionDef = MISSION_DEFS[oldIdx];
         const met = missionDef.evaluate(s);
         if (met && missionDef.bonus) {
@@ -2203,7 +2423,7 @@ function Juego({ onActiveChange }) {
 
       if (finished) return { ...s, finished: true, dayResult: null, reputation, sustainability, missionsLog, missionNote };
 
-      let event = pickEvent();
+      let event = pickEvent(diff);
       let usedSourceIds = s.usedSourceIds;
       if (event.kind === "sources") {
         const scenario = pickSourceScenario(usedSourceIds);
@@ -2246,6 +2466,17 @@ function Juego({ onActiveChange }) {
           <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 auto", maxWidth: 480 }}>{ending.tagline}</p>
         </div>
 
+        {easy && (
+          <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+            <GotaMascot mood={state.sustainability >= 50 && state.budget > 0 ? "happy" : "worried"} size={54} />
+            <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>
+              {state.sustainability >= 50 && state.budget > 0
+                ? <><strong>¡Meta cumplida!</strong> Cuidaste el agua ({Math.round(state.sustainability)}%) y cerraste con plata.</>
+                : <><strong>Casi.</strong> Tu meta era terminar con el agua cuidada en 50% o más y plata en el presupuesto. ¡Probá de nuevo!</>}
+            </div>
+          </div>
+        )}
+        {!easy && (<>
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Ranking de esta partida</span>
           <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{rankTitle(avgScore)} · {avgScore}/100</span>
@@ -2258,6 +2489,7 @@ function Juego({ onActiveChange }) {
           <ScoreBar icon={MessageSquare} color="var(--acc-rose)" label="Transparencia" value={scores.transparencia} />
           <ScoreBar icon={Leaf} color="var(--acc-green)" label="Impacto ambiental" value={scores.impacto} />
         </div>
+        </>)}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
           <StatBox icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={numFmt(state.totalServed, 0)} label="Consultas atendidas" />
@@ -2305,6 +2537,9 @@ function Juego({ onActiveChange }) {
           </div>
         )}
 
+        {diff.objectives && <ObjectivesPanel state={state} final />}
+        {diff.dataPanel && <DataPanel state={state} defaultOpen />}
+
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
           <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>El agua invisible de tu partida</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
@@ -2330,7 +2565,7 @@ function Juego({ onActiveChange }) {
           <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
           <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
             Tu data center gastó el equivalente a <strong style={{ color: "var(--acc-teal)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
-            {" "}<strong style={{ color: "var(--acc-blue)" }}>{numFmt(phoneCharges, 0)} cargas de celular</strong> a lo largo de {diff.days} días atendiendo consultas de IA en dificultad {diff.label.toLowerCase()}, en {zone.label.toLowerCase()}.
+            {" "}<strong style={{ color: "var(--acc-blue)" }}>{numFmt(phoneCharges, 0)} cargas de celular</strong> a lo largo de {diff.days} días atendiendo consultas de IA en dificultad {diff.label.toLowerCase()}, en {zone.label}.
           </p>
         </div>
 
@@ -2345,10 +2580,16 @@ function Juego({ onActiveChange }) {
 
   return (
     <div key={`${state.day}-${state.dayResult ? "result" : "action"}`} className="hi-day-enter">
+      {state.dayResult && (
+        <svg key={`fall-${state.day}`} className="hi-fall" width="18" height="24" viewBox="0 0 12 16" aria-hidden="true">
+          <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
+        </svg>
+      )}
+      <div role="status" aria-live="polite" className="hi-sr">{`Día ${state.day} de ${diff.days}. ${gotaSays(state)}`}</div>
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Gamepad2 size={17} color="var(--acc-blue)" />
+            {!easy && <GotaMascot mood={mood} size={22} react={gotaReact} />}
             <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2358,9 +2599,16 @@ function Juego({ onActiveChange }) {
             </button>
           </div>
         </div>
-        <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: 0 }}>
-          Atendé consultas de IA sin descuidar el agua, la electricidad y tu reputación pública.
-        </p>
+        {easy ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8, paddingLeft: 4 }}>
+            <GotaMascot mood={mood} size={64} react={gotaReact} />
+            <div className="hi-bubble" key={gotaSays(state)} style={{ flex: 1 }}>{gotaSays(state)}</div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: 0 }}>
+            Atendé consultas de IA sin descuidar el agua, la electricidad y tu reputación pública.
+          </p>
+        )}
         {(() => {
           const done = state.dayResult ? state.day : state.day - 1;
           const pct = Math.max(0, Math.min(100, (done / diff.days) * 100));
@@ -2407,12 +2655,15 @@ function Juego({ onActiveChange }) {
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Tus números hasta ahora</span>
         <InfoButton onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${diff.showEnergy ? 3 : 2}, 1fr)`, gap: 8, marginBottom: 10 }}>
         <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua acumulada" delay={0} />
-        <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Energía acumulada" delay={40} />
+        {diff.showEnergy && <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Energía acumulada" delay={40} />}
         <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto" delay={80} />
       </div>
 
+      {easy ? (
+        <CareBar value={state.sustainability} label="Agua cuidada" />
+      ) : (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div style={{ position: "relative" }}>
           <Gauge value={state.sustainability} color={gradeFor(state.sustainability).color} label="Sostenibilidad" />
@@ -2423,10 +2674,14 @@ function Juego({ onActiveChange }) {
           <InfoButton onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
         </div>
       </div>
+      )}
 
-      <button onClick={() => setShowSetup(v => !v)} aria-expanded={showSetup} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginBottom: showSetup ? 8 : 12 }}>
+      {diff.objectives && <ObjectivesPanel state={state} />}
+      {diff.dataPanel && <DataPanel state={state} />}
+
+      {!easy && <button onClick={() => setShowSetup(v => !v)} aria-expanded={showSetup} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginBottom: showSetup ? 8 : 12 }}>
         <Sliders size={13} /> {showSetup ? "Ocultar mi configuración actual" : "Ver mi configuración actual"}
-      </button>
+      </button>}
 
       {showSetup && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))", gap: 8, marginBottom: 12 }}>
@@ -2436,7 +2691,7 @@ function Juego({ onActiveChange }) {
         </div>
       )}
 
-      {state.lowSustainStreak >= 1 && (
+      {diff.fines && state.lowSustainStreak >= 1 && (
         <div role="alert" className="hi-card" style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--acc-red-bg)", border: "1px solid var(--acc-red)", borderRadius: 8, padding: "9px 12px", marginBottom: 12 }}>
           <AlertTriangle size={14} color="var(--acc-red)" style={{ flexShrink: 0 }} />
           <span style={{ fontSize: 11.5, color: "var(--acc-red)" }}>Sostenibilidad muy baja hace {state.lowSustainStreak} día{state.lowSustainStreak > 1 ? "s" : ""}: si sigue así, te multan.</span>
@@ -2444,7 +2699,7 @@ function Juego({ onActiveChange }) {
       )}
 
       {state.event && state.event.kind === "modifier" && state.event.id !== "calm" && !state.dayResult && (
-        <div className="hi-card" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--acc-mustard-bg)", border: "1px solid var(--acc-mustard)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+        <div className="hi-alert-in" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--acc-mustard-bg)", border: "1px solid var(--acc-mustard)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
           <AlertTriangle size={15} color="var(--acc-mustard)" style={{ marginTop: 1, flexShrink: 0 }} />
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acc-mustard)" }}>{state.event.emoji} {state.event.label}</div>
@@ -2518,7 +2773,7 @@ function Juego({ onActiveChange }) {
       {state.eventChoiceResolved && !state.dayResult && (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
-            {GAME_ACTION_DEFS.filter(a => a.id !== "save").map(action => {
+            {visibleActions.map(action => {
               const Icon = action.icon;
               const cost = costFor(action, state);
               const affordable = state.budget >= cost;
@@ -2539,15 +2794,15 @@ function Juego({ onActiveChange }) {
                     display: "flex", alignItems: "center", gap: 10
                   }}
                 >
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: action.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div className="hi-icon-wig" style={{ width: 28, height: 28, borderRadius: 7, background: action.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon size={14} color={action.color} />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
-                      {action.label} {cost > 0 && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--ink-soft)" }}>· ${numFmt(cost, 0)}</span>}
+                      {easy && action.easyLabel ? action.easyLabel : action.label} {cost > 0 && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--ink-soft)" }}>· ${numFmt(cost, 0)}</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>
-                      {disabledAudit ? "Ya hiciste una auditoría esta partida." : (active ? action.desc : null)}
+                    <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+                      {disabledAudit ? "Ya hiciste una auditoría esta partida." : ((active || easy) ? (easy && action.easyDesc ? action.easyDesc : action.desc) : null)}
                       {!affordable && !disabledAudit ? " (no te alcanza el presupuesto)" : ""}
                     </div>
                   </div>
@@ -2593,7 +2848,8 @@ function Juego({ onActiveChange }) {
       )}
 
       {state.dayResult && (
-        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, border: "1px solid var(--line)" }}>
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
+          {easy && state.dayResult.sustainDelta > 0 && state.dayResult.unmet === 0 && <Confetti />}
           <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>
             Resultado del día {state.dayResult.day}
           </div>
@@ -2602,7 +2858,7 @@ function Juego({ onActiveChange }) {
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8, marginBottom: 10 }}>
             <ResultBox icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" label="Atendidas" value={numFmt(state.dayResult.served, 0)} />
-            <ResultBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" label="Electricidad" value={formatEnergy(state.dayResult.kWh * 1000)} />
+            {diff.showEnergy && <ResultBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" label="Electricidad" value={formatEnergy(state.dayResult.kWh * 1000)} />}
             <ResultBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" label="Agua total" value={`${numFmt(state.dayResult.waterTotalL, 2)} L`} />
           </div>
           {state.dayResult.unmet > 0 && (
@@ -2616,15 +2872,20 @@ function Juego({ onActiveChange }) {
             </p>
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 14 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.sustainDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
+            <span className="hi-delta" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.sustainDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
               {state.dayResult.sustainDelta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {state.dayResult.sustainDelta >= 0 ? "+" : ""}{state.dayResult.sustainDelta} sostenibilidad
+              {state.dayResult.sustainDelta >= 0 ? "+" : ""}{state.dayResult.sustainDelta} {easy ? "agua cuidada" : "sostenibilidad"}
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.repDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
+            {diff.showRep && <span className="hi-delta" style={{ animationDelay: ".15s", display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.repDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
               {state.dayResult.repDelta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
               {state.dayResult.repDelta >= 0 ? "+" : ""}{state.dayResult.repDelta} reputación
-            </span>
+            </span>}
           </div>
+          {easy && (
+            <div className="hi-card" style={{ background: "var(--acc-blue-bg)", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 12.5, color: "var(--ink)", lineHeight: 1.5 }}>
+              💡 <strong>Dato curioso:</strong> {EASY_TIPS[(state.dayResult.day - 1) % EASY_TIPS.length]}
+            </div>
+          )}
           {state.trivia && (
             <div className="hi-card" style={{ background: "var(--acc-indigo-bg)", border: "1px solid var(--acc-indigo)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -2665,6 +2926,7 @@ function Juego({ onActiveChange }) {
         </div>
       )}
 
+      {easy ? <GoalStrip state={state} /> : (
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginTop: 12, marginBottom: 0, borderLeft: "4px solid var(--acc-purple)" }}>
         {state.missionNote && (
           <div style={{ marginBottom: 8, fontSize: 12, color: state.missionNote.met ? "var(--acc-green)" : "var(--ink-soft)" }}>
@@ -2681,6 +2943,7 @@ function Juego({ onActiveChange }) {
         <p style={{ fontSize: 12.5, color: "var(--ink)", margin: "0 0 4px", lineHeight: 1.5 }}>{MISSION_DEFS[state.currentMissionIndex].narrative}</p>
         <p style={{ fontSize: 11, color: "var(--ink-soft)", margin: 0 }}>Objetivo: {MISSION_DEFS[state.currentMissionIndex].hint}</p>
       </div>
+      )}
 
       {state.history.length > 0 && (
         <div style={{ marginTop: 12 }}>
