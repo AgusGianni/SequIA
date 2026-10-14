@@ -6,7 +6,7 @@
 <title>SequIA — El costo oculto de la IA</title>
 
 <link rel="manifest" href="./manifest.json" />
-<meta name="theme-color" content="#06264A" />
+<meta name="theme-color" content="#2952E3" />
 <link rel="icon" href="./icon-192.png" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💧</text></svg>" />
 
@@ -194,10 +194,19 @@ const X = mkIcon(["M18 6 6 18", "m6 6 12 12"]);
 const GOOGLE_ELECTRICITY_WH = 0.24;   // Wh por prompt de texto mediano en Gemini Apps
 const GOOGLE_DIRECT_WATER_ML = 0.26;  // mL de agua directa (in situ) por el mismo prompt
 
-// Estimación citada por Acero y Roca (2026) para mega centros de datos de IA como Stargate
-// Argentina: 7,1 m³ de agua por cada MWh generado (agua directa + indirecta combinadas).
-// Acá se usa como aproximación de la parte indirecta, sumada aparte al agua directa por consulta.
-const GRID_WATER_INTENSITY_L_PER_KWH = 7.1; // agua indirecta por kWh, estimación aplicada a mega centros de datos como los que se evalúan en Argentina
+// Metodología unificada con el sitio Sed de Datos:
+// - Agua indirecta (la que se gasta en generar la electricidad): valor central de 1,5 L por kWh,
+//   dentro del rango 0,5–2,5 L/kWh que usa la calculadora del sitio. Se aplica SOLO a la parte indirecta.
+// - Agua directa (refrigeración): 0,26 mL por consulta mediana de Gemini (Google, 2025), el extremo bajo
+//   del rango; el sitio usa además el extremo alto de UC Riverside (10–25 mL).
+// - Escenario "mega centro de datos": Acero y Roca (2026) cita ≈7,1 m³ de agua por MWh (= 7,1 L/kWh)
+//   para Stargate Argentina, sumando agua directa + indirecta. Es un escenario de referencia, no un
+//   insumo del cálculo: usarlo como solo indirecto y sumar aparte los 0,26 mL directos contaría el agua dos veces.
+const GRID_WATER_INTENSITY_L_PER_KWH = 1.5; // agua indirecta por kWh (valor central; rango 0,5–2,5)
+const MEGA_DC_COMBINED_L_PER_KWH = 7.1;     // referencia: directa + indirecta combinadas (no entra en el cálculo)
+// Los umbrales de agua por consulta de cada dificultad se calibraron con ~2 mL/consulta (versión anterior,
+// con 7,1 L/kWh) y se reescalaron ×0,36 al pasar a 1,5 L/kWh para conservar la dificultad relativa.
+const WATER_PENALTY_SLOPE = 8; // puntos de sostenibilidad perdidos por cada mL por encima del umbral (antes 3, con escala ×0,36)
 
 const PHONE_CHARGE_KWH = 0.015;  // carga típica de batería de celular (~15 Wh)
 const GLASS_OF_WATER_ML = 250;
@@ -255,8 +264,12 @@ function App() {
     if (typeof document !== "undefined") document.title = "SequIA — El costo oculto de la IA";
   }, []);
 
+  // Pantalla de carga: se muestra unos instantes en cada ingreso y se desvanece.
+  const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    setLoaded(true);
+    const t1 = setTimeout(() => setLeaving(true), 2300);
+    const t2 = setTimeout(() => setLoaded(true), 2750);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const [showTop, setShowTop] = useState(false);
@@ -268,14 +281,13 @@ function App() {
 
   if (!loaded) {
     return (
-      <div style={splashStyles.wrap}>
+      <div style={{ ...splashStyles.wrap, opacity: leaving ? 0 : 1, transition: "opacity .45s ease" }} role="status" aria-label="Cargando SequIA">
         <GlobalStyle />
-        <div className="hi-splash-logo" style={splashStyles.badge}>
-          <BrandMark size={38} />
+        <div className="hi-splash-logo" style={splashStyles.card}>
+          <BrandMark size={64} />
+          <h1 style={splashStyles.title}>SequIA</h1>
         </div>
-        <h1 className="hi-splash-title" style={splashStyles.title}>SequIA</h1>
-        <p className="hi-splash-tag" style={splashStyles.tag}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
-        <div style={{ display: "flex", gap: 6, marginTop: 26 }}>
+        <div style={{ display: "flex", gap: 7, marginTop: 34 }}>
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: "0s" }} />
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: ".15s" }} />
           <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: ".3s" }} />
@@ -458,6 +470,21 @@ function GlobalStyle() {
       .hi-alert-in { animation: riseIn .35s ease-out both, alertShake .5s .35s ease-in-out 1; }
       .hi-fall { position: fixed; left: 50%; top: 0; z-index: 40; pointer-events: none; animation: dropFall 1.1s cubic-bezier(.5,0,.9,.6) forwards; }
       @keyframes dropFall { 0% { transform: translate(-50%, -30px) scale(1); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, calc((1 - var(--water-lv, 0.05)) * 100vh - 24px)) scale(0.6, 1.2); opacity: 0; } }
+      .hi-pick { animation: pickPop .55s cubic-bezier(.2,.8,.3,1.3); }
+      @keyframes pickPop { 0% { transform: scale(1); } 30% { transform: scale(1.045); } 60% { transform: scale(0.985); } 100% { transform: scale(1); } }
+      .hi-pick-ring { position: absolute; inset: -2px; border-radius: 10px; border: 3px solid var(--acc-blue); pointer-events: none; animation: pickRing .75s ease-out forwards; }
+      @keyframes pickRing { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.09, 1.35); } }
+      .hi-pick-ico { animation: pickIco .6s cubic-bezier(.2,.8,.3,1.4); }
+      @keyframes pickIco { 0% { transform: scale(1) rotate(0); } 40% { transform: scale(1.6) rotate(-18deg); } 100% { transform: scale(1) rotate(0); } }
+      .hi-pick-check { animation: pickCheck .45s cubic-bezier(.2,.8,.3,1.6) both; }
+      @keyframes pickCheck { 0% { transform: scale(0) rotate(-90deg); } 100% { transform: scale(1) rotate(0); } }
+      @media (prefers-reduced-motion: reduce) { .hi-pick, .hi-pick-ring, .hi-pick-ico, .hi-pick-check { animation: none !important; } .hi-pick-ring { display: none; } }
+      .hi-build { transform-box: fill-box; transform-origin: 50% 100%; animation: buildPop .6s cubic-bezier(.2,.8,.3,1.3) both; }
+      @keyframes buildPop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+      .hi-steam { transform-box: fill-box; transform-origin: 50% 100%; animation: steamUp 2.6s ease-in infinite; }
+      @keyframes steamUp { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 30% { opacity: 0.8; } 100% { transform: translateY(-24px) scale(1.3); opacity: 0; } }
+      .hi-led { animation: ledBlink 1.8s steps(2, jump-none) infinite; }
+      @keyframes ledBlink { 0% { opacity: 1; } 50% { opacity: 0.25; } 100% { opacity: 1; } }
       .hi-bob { animation: gotaBob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
       @keyframes gotaBob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(1.03, 0.97); } }
       .hi-wobble { animation: gotaWobble 3s ease-in-out infinite; transform-origin: 50% 100%; }
@@ -529,11 +556,10 @@ const styles = {
 };
 
 const splashStyles = {
-  wrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", fontFamily: "var(--font-body)", padding: 24, textAlign: "center" },
-  badge: { width: 78, height: 78, borderRadius: 20, background: "var(--paper)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(41,82,227,0.12)" },
-  title: { fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 28, color: "var(--ink)", margin: "18px 0 0", letterSpacing: "-0.01em" },
-  tag: { fontSize: 12.5, color: "var(--ink-soft)", margin: "6px 0 0", letterSpacing: "0.02em" },
-  dot: { width: 6, height: 6, borderRadius: "50%", background: "var(--acc-blue)", display: "inline-block" },
+  wrap: { position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#2952E3", fontFamily: "var(--font-body)", padding: 24, textAlign: "center" },
+  card: { width: 190, padding: "30px 20px 26px", borderRadius: 24, background: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 18px 50px rgba(6,38,74,0.35)" },
+  title: { fontFamily: "var(--font-body)", fontStyle: "normal", fontWeight: 800, fontSize: 30, color: "#2952E3", margin: "14px 0 0", letterSpacing: "-0.02em" },
+  dot: { width: 8, height: 8, borderRadius: "50%", background: "#FFFFFF", display: "inline-block" },
 };
 
 // Marca de la app: el mismo logo de 3 puntos conectados que usa el sitio web
@@ -669,7 +695,7 @@ function Header({ onInstallClick, onHomeClick, compact }) {
             </h1>
             {!compact && <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0", fontFamily: "var(--font-body)" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
             {!compact && <a
-              href="https://sed-de-datos.vercel.app/"
+              href="https://seddedatos.com.ar/"
               target="_blank"
               rel="noopener noreferrer"
               style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5, fontFamily: "var(--font-body)" }}
@@ -1089,7 +1115,7 @@ const TRIVIA_BANK = [
     id: "t2",
     statement: "Toda el agua que consume la IA se usa directamente para enfriar los servidores.",
     answer: "falso",
-    explanation: "Gran parte es agua indirecta: la que se gasta para generar la electricidad que alimenta al centro de datos. Para mega centros de datos como los que se evalúan en Argentina (ej. Stargate, en Neuquén), se estimó un promedio de 7,1 litros de agua por kWh entre consumo directo e indirecto.",
+    explanation: "Gran parte es agua indirecta: la que se gasta para generar la electricidad que alimenta al centro de datos. Como referencia, en este juego la parte indirecta se calcula con 1,5 litros de agua por kWh (rango 0,5–2,5). Para mega centros de datos como los que se evalúan en Argentina (ej. Stargate, en Neuquén), se citó un escenario de unos 7,1 litros por kWh sumando consumo directo e indirecto.",
   },
   {
     id: "t3",
@@ -1268,7 +1294,7 @@ const INFRA_WATER_L_PER_CAPACITY_UNIT = 0.03;
 // tier 1 = simple y amable, tier 2 = juego completo, tier 3 = juego elaborado.
 const GAME_DIFFICULTIES = {
   facil: {
-    label: "Fácil", tier: 1, days: 5, budget: 12000, demandBase: 420, demandStep: 95, severity: 0.75, threshold: 2.6,
+    label: "Fácil", tier: 1, days: 5, budget: 12000, demandBase: 420, demandStep: 95, severity: 0.75, threshold: 0.94,
     actions: ["cooling", "renewable", "capacity"],
     showRep: false, showEnergy: false, characters: false, trivia: false, missions: false, objectives: false, dataPanel: false, fines: false,
     harsh: 0.6, repPenalty: 0.5,
@@ -1276,7 +1302,7 @@ const GAME_DIFFICULTIES = {
     bullets: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
   },
   normal: {
-    label: "Normal", tier: 2, days: 8, budget: 11000, demandBase: 500, demandStep: 130, severity: 1, threshold: 2.2,
+    label: "Normal", tier: 2, days: 8, budget: 11000, demandBase: 500, demandStep: 130, severity: 1, threshold: 0.79,
     actions: ["cooling", "renewable", "capacity", "efficiency", "audit"],
     showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: false, dataPanel: false, fines: true,
     harsh: 1, repPenalty: 1,
@@ -1284,7 +1310,7 @@ const GAME_DIFFICULTIES = {
     bullets: ["5 inversiones distintas", "6 misiones con premio", "Personajes que te piden decisiones", "Preguntas Mito / Dato / Depende"],
   },
   dificil: {
-    label: "Difícil", tier: 3, days: 10, budget: 10000, demandBase: 600, demandStep: 170, severity: 1.3, threshold: 1.8,
+    label: "Difícil", tier: 3, days: 10, budget: 10000, demandBase: 600, demandStep: 170, severity: 1.3, threshold: 0.65,
     actions: ["cooling", "renewable", "capacity", "efficiency", "audit", "resilience"],
     showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: true, dataPanel: true, fines: true,
     harsh: 1.6, repPenalty: 1.5,
@@ -1997,9 +2023,9 @@ function GoalStrip({ state }) {
 
 // Objetivos de la dirección (solo dificultad Difícil): medibles, con seguimiento.
 const HARD_OBJECTIVES = [
-  { id: "h1", label: "Agua operativa por consulta de 1,0 mL o menos (promedio)",
+  { id: "h1", label: "Agua operativa por consulta de 0,35 mL o menos (promedio)",
     value: (s) => s.totalServed > 0 ? ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed : 0,
-    fmt: (v) => `${numFmt(v, 2)} mL`, ok: (s) => s.totalServed === 0 || ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed <= 1.0 },
+    fmt: (v) => `${numFmt(v, 2)} mL`, ok: (s) => s.totalServed === 0 || ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed <= 0.35 },
   { id: "h2", label: "Reputación de 65 o más al cierre",
     value: (s) => s.reputation, fmt: (v) => `${Math.round(v)}`, ok: (s) => s.reputation >= 65 },
   { id: "h3", label: "Menos de 5% de consultas sin atender",
@@ -2074,6 +2100,214 @@ function DataPanel({ state, defaultOpen }) {
   );
 }
 
+// ---------- Sonido y vibración (síntesis simple con Web Audio, sin archivos) ----------
+const sfx = (() => {
+  let ctx = null;
+  let muted = false;
+  try { muted = window.localStorage.getItem("sequia-muted") === "1"; } catch (e) { /* sin almacenamiento */ }
+  const getCtx = () => {
+    try {
+      if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (C) ctx = new C(); }
+      if (ctx && ctx.state === "suspended") ctx.resume();
+    } catch (e) { ctx = null; }
+    return ctx;
+  };
+  const tone = (freq, start, dur, type, vol, slideTo) => {
+    const c = getCtx();
+    if (!c) return;
+    const t0 = c.currentTime + start;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type || "sine";
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  };
+  const buzz = (pattern) => {
+    try {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) { /* sin vibración */ }
+  };
+  return {
+    get muted() { return muted; },
+    setMuted(v) { muted = v; try { window.localStorage.setItem("sequia-muted", v ? "1" : "0"); } catch (e) { /* sin almacenamiento */ } },
+    play(kind) {
+      if (muted) return;
+      try {
+        if (kind === "tick") tone(520, 0, 0.06, "triangle", 0.07);
+        if (kind === "build") { tone(440, 0, 0.08, "square", 0.04); tone(660, 0.07, 0.1, "square", 0.04); buzz(20); }
+        if (kind === "drop") tone(900, 0, 0.28, "sine", 0.12, 300);
+        if (kind === "good") { tone(523, 0, 0.12, "sine", 0.1); tone(659, 0.1, 0.12, "sine", 0.1); tone(784, 0.2, 0.22, "sine", 0.1); buzz(30); }
+        if (kind === "bad") { tone(300, 0, 0.22, "sawtooth", 0.05, 160); tone(200, 0.16, 0.28, "sawtooth", 0.05, 110); buzz([70, 40, 70]); }
+        if (kind === "alert") { tone(380, 0, 0.14, "triangle", 0.08); tone(380, 0.18, 0.14, "triangle", 0.08); buzz([50, 30, 50]); }
+      } catch (e) { /* el audio nunca debe romper el juego */ }
+    },
+  };
+})();
+
+// ---------- Mapa: el centro de datos se va armando con cada mejora ----------
+function DataCenterMap({ state }) {
+  const racks = Math.max(1, Math.min(8, Math.round(state.capacity / 400)));
+  const towers = Math.max(0, Math.min(6, Math.round(state.cooling / 15)));
+  const panels = Math.max(0, Math.min(6, Math.round(state.renewable / 15)));
+  const chips = Math.max(0, Math.min(6, Math.round(state.efficiency / 10)));
+  const shields = Math.max(0, Math.min(4, state.resilience || 0));
+  const bx = 112;
+  const bw = 40 + racks * 12;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 14px 12px", marginBottom: 12 }}>
+      <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 2 }}>Tu centro de datos</div>
+      <svg viewBox="0 22 360 92" style={{ width: "100%", display: "block" }} role="img"
+        aria-label={`Tu centro de datos: ${racks} módulos de servidores, ${towers} torres de enfriamiento, ${panels} paneles de energía renovable${state.audited ? ", con auditoría" : ""}.`}>
+        <rect x="0" y="108" width="360" height="3" fill="var(--ink)" />
+        {Array.from({ length: panels }).map((_, i) => (
+          <g key={"p" + i} className="hi-build" style={{ animationDelay: `${i * 60}ms` }}>
+            <line x1={14 + i * 17} y1="108" x2={14 + i * 17} y2="98" stroke="var(--ink)" strokeWidth="2" />
+            <rect x={8 + i * 17} y="86" width="14" height="14" rx="1" fill="var(--acc-blue-bg)" stroke="var(--ink)" strokeWidth="1.5" transform={`rotate(-12 ${15 + i * 17} 93)`} />
+            <line x1={8 + i * 17} y1="93" x2={22 + i * 17} y2="93" stroke="var(--acc-blue)" strokeWidth="1" transform={`rotate(-12 ${15 + i * 17} 93)`} />
+          </g>
+        ))}
+        <rect x={bx} y="50" width={bw} height="58" fill="var(--paper)" stroke="var(--ink)" strokeWidth="2.5" />
+        <rect x={bx} y="50" width={bw} height="8" fill="var(--dark-panel)" />
+        {Array.from({ length: racks }).map((_, i) => (
+          <g key={"r" + i} className="hi-build" style={{ animationDelay: `${i * 50}ms` }}>
+            <rect x={bx + 8 + i * 12} y="64" width="8" height="38" rx="1" fill="var(--dark-panel)" />
+            <circle className="hi-led" style={{ animationDelay: `${(i % 4) * 0.4}s` }} cx={bx + 12 + i * 12} cy="70" r="1.6" fill="var(--logo-cyan)" />
+            <circle className="hi-led" style={{ animationDelay: `${((i + 2) % 4) * 0.4}s` }} cx={bx + 12 + i * 12} cy="76" r="1.6" fill="var(--acc-orange)" />
+          </g>
+        ))}
+        {Array.from({ length: chips }).map((_, i) => (
+          <rect key={"c" + i} className="hi-build" style={{ animationDelay: `${i * 60}ms` }} x={bx + 2 + i * 12} y="36" width="9" height="9" rx="1.5" fill="var(--acc-mustard)" stroke="var(--ink)" strokeWidth="1.2" />
+        ))}
+        {state.audited && (
+          <g className="hi-build">
+            <line x1={bx + bw - 6} y1="18" x2={bx + bw - 6} y2="50" stroke="var(--ink)" strokeWidth="2" />
+            <path d={`M${bx + bw - 6} 18 h16 l-4 5 l4 5 h-16 z`} fill="var(--acc-rose)" stroke="var(--ink)" strokeWidth="1.2" />
+          </g>
+        )}
+        {Array.from({ length: shields }).map((_, i) => (
+          <path key={"s" + i} className="hi-build" d={`M${bx - 2 + i * 12} 96 h9 v6 q0 5 -4.5 7 q-4.5 -2 -4.5 -7 z`} fill="var(--acc-copper)" stroke="var(--ink)" strokeWidth="1.2" transform="translate(0 -4)" />
+        ))}
+        {Array.from({ length: towers }).map((_, i) => (
+          <g key={"t" + i} className="hi-build" style={{ animationDelay: `${i * 60}ms` }}>
+            <path d={`M${262 + i * 16} 108 L${274 + i * 16} 108 L${272 + i * 16} 76 L${264 + i * 16} 76 Z`} fill="var(--acc-teal-bg)" stroke="var(--ink)" strokeWidth="1.5" />
+            <circle className="hi-steam" style={{ animationDelay: `${i * 0.35}s` }} cx={268 + i * 16} cy="72" r="4" fill="var(--logo-cyan)" opacity="0.7" />
+          </g>
+        ))}
+      </svg>
+      <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: 4 }}>
+        {numFmt(state.capacity, 0)} consultas/día · {state.cooling}% enfriamiento · {state.renewable}% renovable
+      </div>
+    </div>
+  );
+}
+
+// ---------- Tarjeta de resultado para compartir (se dibuja como imagen PNG) ----------
+function cssVarValue(v) {
+  const m = /^var\((--[\w-]+)\)$/.exec(v || "");
+  if (!m) return v || "#14181F";
+  try { return getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() || "#14181F"; } catch (e) { return "#14181F"; }
+}
+
+function wrapCanvasText(g, text, x, y, maxW, lh) {
+  const words = text.split(" ");
+  let line = "";
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (g.measureText(test).width > maxW && line) { g.fillText(line, x, y); line = w; y += lh; } else { line = test; }
+  }
+  if (line) { g.fillText(line, x, y); y += lh; }
+  return y;
+}
+
+function buildShareCanvas(d) {
+  const W = 1080, H = 1350;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  const INK = "#14181F", BLUE = "#2952E3", SOFT = "#5B6472";
+  g.fillStyle = "#F7F4EE"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(20,24,31,0.08)";
+  for (let x = 30; x < W; x += 40) for (let y = 30; y < H; y += 40) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = INK; g.fillRect(84, 104, 920, 1140);
+  g.fillStyle = "#FFFFFF"; g.fillRect(70, 90, 920, 1140);
+  g.lineWidth = 6; g.strokeStyle = INK; g.strokeRect(70, 90, 920, 1140);
+  g.textAlign = "left"; g.textBaseline = "alphabetic";
+  g.fillStyle = BLUE; g.font = "italic 700 64px Newsreader, Georgia, serif"; g.fillText("SequIA", 120, 190);
+  g.fillStyle = SOFT; g.font = "500 26px Inter, sans-serif";
+  wrapCanvasText(g, "Un juego sobre la IA, el agua y las decisiones que no vemos.", 120, 232, 560, 34);
+  // Gota
+  g.save(); g.translate(800, 120); g.scale(1.05, 1.05);
+  const drop = new Path2D("M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z");
+  g.fillStyle = BLUE; g.fill(drop); g.lineWidth = 5; g.strokeStyle = INK; g.stroke(drop);
+  g.fillStyle = "#FFFFFF"; g.beginPath(); g.arc(44, 80, 9, 0, 7); g.arc(76, 80, 9, 0, 7); g.fill();
+  g.fillStyle = INK; g.beginPath(); g.arc(46, 81, 4.5, 0, 7); g.arc(74, 81, 4.5, 0, 7); g.fill();
+  g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(44, 92); g.quadraticCurveTo(60, 110, 76, 92); g.stroke();
+  g.restore();
+  // Final
+  g.textAlign = "center";
+  g.font = "120px sans-serif"; g.fillStyle = INK; g.fillText(d.emoji, W / 2, 470);
+  g.fillStyle = d.color; g.font = "italic 700 76px Newsreader, Georgia, serif"; g.fillText(d.title, W / 2, 575);
+  g.fillStyle = INK; g.font = "500 32px Inter, sans-serif";
+  wrapCanvasText(g, d.tagline, W / 2, 640, 780, 44);
+  // Cifra principal
+  g.fillStyle = d.waterColor; g.font = "700 150px Newsreader, Georgia, serif"; g.fillText(d.water + " L", W / 2, 930);
+  g.fillStyle = INK; g.font = "600 36px Inter, sans-serif"; g.fillText("de agua gastó mi centro de datos", W / 2, 990);
+  g.fillStyle = SOFT; g.font = "500 32px Inter, sans-serif"; g.fillText(`≈ ${d.glasses} vasos de agua · ${d.served} consultas atendidas`, W / 2, 1050);
+  g.fillStyle = INK; g.font = "600 30px Inter, sans-serif"; g.fillText(d.meta, W / 2, 1120);
+  g.fillStyle = BLUE; g.font = "700 36px Inter, sans-serif"; g.fillText("Jugá SequIA: sequ-ia.vercel.app", W / 2, 1185);
+  return c;
+}
+
+function ShareCard({ state, ending, glasses, zone, diff }) {
+  const [msg, setMsg] = useState("");
+  const data = {
+    emoji: ending.emoji, title: ending.title, tagline: ending.tagline, color: cssVarValue(ending.color), waterColor: cssVarValue("var(--acc-teal)"),
+    water: numFmt(state.totalWaterL, 1), glasses: numFmt(glasses, 0), served: numFmt(state.totalServed, 0),
+    meta: `Dificultad ${diff.label} · ${zone.label}`,
+  };
+  const share = async () => {
+    try {
+      const canvas = buildShareCanvas(data);
+      const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+      if (!blob) throw new Error("sin imagen");
+      const file = new File([blob], "sequia-resultado.png", { type: "image/png" });
+      const text = `Mi centro de datos gastó ${data.water} L de agua en SequIA (${diff.label}). ¿Y el tuyo? https://sequ-ia.vercel.app/`;
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text, title: "SequIA" });
+        setMsg("¡Listo!");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "sequia-resultado.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setMsg("Imagen descargada: ya la podés compartir.");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      setMsg("No se pudo generar la imagen en este dispositivo.");
+    }
+  };
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "center" }}>
+      <div style={{ fontSize: 30 }}>{ending.emoji}</div>
+      <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 20, color: ending.color }}>{ending.title}</div>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 40, color: "var(--acc-teal)", lineHeight: 1.1, marginTop: 6 }}>{data.water} L</div>
+      <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 12 }}>de agua gastó tu centro de datos · ≈ {data.glasses} vasos</div>
+      <button onClick={share} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", background: "var(--acc-blue)" }}>
+        Compartir mi resultado
+      </button>
+      <div role="status" aria-live="polite" style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: msg ? 8 : 0 }}>{msg}</div>
+    </div>
+  );
+}
+
 function Juego({ onActiveChange }) {
   const [zone, setZone] = useState(null);
   const [diffKey, setDiffKey] = useState(null);
@@ -2088,10 +2322,25 @@ function Juego({ onActiveChange }) {
   // El agua acumulada de la partida sube por la pantalla.
   const waterL = state ? state.totalWaterL : 0;
   useEffect(() => {
-    const lv = Math.min(0.35, 0.35 * (1 - Math.exp(-waterL / 15)));
+    const lv = Math.min(0.35, 0.35 * (1 - Math.exp(-waterL / 3)));
     document.documentElement.style.setProperty("--water-lv", String(lv));
   }, [waterL]);
   useEffect(() => () => document.documentElement.style.setProperty("--water-lv", "0"), []);
+
+  // Sonido y vibración: un "gota" al cerrar el día, y un aviso en las crisis.
+  const [muted, setMuted] = useState(sfx.muted);
+  const [pickN, setPickN] = useState(0);
+  const resultKey = state && state.dayResult ? state.day : 0;
+  useEffect(() => {
+    if (!resultKey) return undefined;
+    const r = state.dayResult;
+    if (r.actionTaken) sfx.play("build");
+    sfx.play("drop");
+    const t = setTimeout(() => sfx.play(r.sustainDelta > 0 && r.unmet === 0 ? "good" : (r.sustainDelta < 0 || r.unmet > 0 ? "bad" : "tick")), 700);
+    return () => clearTimeout(t);
+  }, [resultKey]);
+  const alertKey = state && !state.dayResult && state.event && state.event.kind === "modifier" && state.event.id !== "calm" ? `${state.day}-${state.event.id}` : "";
+  useEffect(() => { if (alertKey) sfx.play("alert"); }, [alertKey]);
 
   // Hay "partida en curso" desde que arranca hasta que se muestra el resultado final.
   const inProgress = !!state && !state.finished;
@@ -2335,7 +2584,7 @@ function Juego({ onActiveChange }) {
     const waterPerQueryMl = served > 0 ? (waterTotalL * 1000) / served : 0;
     let sustainDelta = 0;
     if (served > 0) {
-      sustainDelta += waterPerQueryMl <= diff.threshold ? 2 : -Math.min(10, Math.round((waterPerQueryMl - diff.threshold) * 3 * diff.severity));
+      sustainDelta += waterPerQueryMl <= diff.threshold ? 2 : -Math.min(10, Math.round((waterPerQueryMl - diff.threshold) * WATER_PENALTY_SLOPE * diff.severity));
     }
     let repDelta = 0;
     if (unmet > 0) repDelta -= Math.round(Math.min(8 * diff.repPenalty, (unmet / 200) * diff.repPenalty));
@@ -2569,6 +2818,8 @@ function Juego({ onActiveChange }) {
           </p>
         </div>
 
+        <ShareCard state={state} ending={ending} glasses={glasses} zone={zone} diff={diff} />
+
         <button onClick={restart} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center" }}>
           <RotateCcw size={14} /> Jugar de nuevo
         </button>
@@ -2594,6 +2845,9 @@ function Juego({ onActiveChange }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)" }}>Día {state.day} / {diff.days} · {diff.label} · {zone.emoji}</span>
+            <button onClick={() => { const v = !muted; sfx.setMuted(v); setMuted(v); if (!v) sfx.play("tick"); }} className="hi-btn" aria-label={muted ? "Activar sonido y vibración" : "Silenciar sonido y vibración"} aria-pressed={muted} title={muted ? "Activar sonido" : "Silenciar sonido"} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, fontSize: 15, lineHeight: 1, display: "flex" }}>
+              {muted ? "🔇" : "🔊"}
+            </button>
             <button onClick={() => setShowGuide(true)} className="hi-btn" aria-label="Ver guía paso a paso" title="Ver guía paso a paso" style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--ink-soft)", display: "flex" }}>
               <Info size={15} />
             </button>
@@ -2622,6 +2876,8 @@ function Juego({ onActiveChange }) {
           );
         })()}
       </div>
+
+      {/* Mapa del centro de datos: guardado para uso futuro. Para mostrarlo: <DataCenterMap state={state} /> */}
 
       {!state.dayResult && state.demand != null && (() => {
         const chosenDef = chosen ? GAME_ACTION_DEFS.find(a => a.id === chosen) : null;
@@ -2780,9 +3036,10 @@ function Juego({ onActiveChange }) {
               const active = chosen === action.id;
               const disabledAudit = action.id === "audit" && state.audited;
               return (
-                <div key={action.id} style={{ position: "relative" }}>
+                <div key={action.id} className={active ? "hi-pick" : undefined} style={{ position: "relative" }}>
+                {active && <span key={"ring-" + pickN} className="hi-pick-ring" aria-hidden="true" style={{ borderColor: action.color }} />}
                 <button
-                  onClick={() => !disabledAudit && setChosen(action.id)}
+                  onClick={() => { if (!disabledAudit) { setChosen(action.id); setPickN(n => n + 1); sfx.play("tick"); } }}
                   className={active ? "hi-btn hi-ink" : "hi-btn hi-ink-rest"}
                   aria-disabled={disabledAudit}
                   aria-pressed={active}
@@ -2794,7 +3051,7 @@ function Juego({ onActiveChange }) {
                     display: "flex", alignItems: "center", gap: 10
                   }}
                 >
-                  <div className="hi-icon-wig" style={{ width: 28, height: 28, borderRadius: 7, background: action.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div key={active ? "on" + pickN : "off"} className={active ? "hi-icon-wig hi-pick-ico" : "hi-icon-wig"} style={{ width: 28, height: 28, borderRadius: 7, background: action.color + (active ? "44" : "22"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon size={14} color={action.color} />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -2806,6 +3063,9 @@ function Juego({ onActiveChange }) {
                       {!affordable && !disabledAudit ? " (no te alcanza el presupuesto)" : ""}
                     </div>
                   </div>
+                  {active && (
+                    <span className="hi-pick-check" aria-hidden="true" style={{ position: "absolute", top: -8, left: -8, width: 22, height: 22, borderRadius: "50%", background: action.color, color: "#fff", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, lineHeight: 1 }}>✓</span>
+                  )}
                 </button>
                 <InfoButton onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
                 </div>
@@ -2974,7 +3234,7 @@ function ArrowRightIcon({ color }) {
 
 
 const SOURCES = [
-  { title: "El centro de datos de la Patagonia y la frontera del agua digital", org: "Sed de Datos — análisis propio, sección Patagonia", url: "https://sed-de-datos.vercel.app/", desc: "Estimación propia de nuestro sitio: ≈25.000 L de agua de refrigeración por día por cada MW de capacidad instalada. Es una cifra distinta a la de agua indirecta por kWh que usa el resto de esta app — mide el agua directa de refrigeración escalada por capacidad del centro de datos, no el agua de generar la electricidad." },
+  { title: "El centro de datos de la Patagonia y la frontera del agua digital", org: "Sed de Datos — análisis propio, sección Patagonia", url: "https://seddedatos.com.ar/", desc: "Estimación propia de nuestro sitio: ≈25.000 L de agua de refrigeración por día por cada MW de capacidad instalada. Equivale a ≈1 L de agua directa por kWh (25.000 L ÷ 24.000 kWh por MW por día), del mismo orden que los 0,26 mL por 0,24 Wh de Google. Mide el agua directa de refrigeración escalada por capacidad, no el agua de generar la electricidad (esa se calcula aparte, con 1,5 L/kWh)." },
   { title: "Making AI Less 'Thirsty'", org: "Li, Yang, Islam & Ren — UC Riverside (2023), documento técnico en inglés", url: "https://arxiv.org/abs/2304.03271", desc: "El estudio académico que mide en detalle la huella hídrica directa e indirecta de entrenar y usar modelos como GPT-3 — la base de las cifras de agua por consulta que usa la Calculadora." },
   { title: "ChatGPT users send 2.5 billion prompts a day", org: "TechCrunch (2025) — en inglés", url: "https://techcrunch.com/2025/07/21/chatgpt-users-send-2-5-billion-prompts-a-day/", desc: "La cifra de escala global que da contexto a por qué un gasto mínimo por consulta termina pesando tanto: 2.500 millones de mensajes diarios, según datos de OpenAI." },
   { title: "¿Cuánta energía consume la IA de Google? Hicimos los cálculos", org: "Blog oficial de Google (2025)", url: "https://blog.google/intl/es-419/actualizaciones-de-producto/en-la-nube/cuanta-energia-consume-la-ia-de-google-hicimos-los-calculos/", desc: "El anuncio oficial de Google, en español: metodología y cifras (0,24 Wh y 0,26 mL de agua directa por prompt mediano en Gemini)." },
@@ -2985,7 +3245,7 @@ const SOURCES = [
   { title: "La huella hídrica invisible de la inteligencia artificial", org: "Consejo Latinoamericano de Ética en Tecnología (2026)", url: "https://somosclet.org/la-huella-hidrica-invisible-de-la-inteligencia-artificial/", desc: "Análisis en español sobre agua directa e indirecta, con los mismos datos del Lawrence Berkeley (800 mil millones de litros indirectos en 2023)." },
   { title: "Miden el impacto ecológico de usar ChatGPT-3: 2 litros de agua por 10 a 50 consultas", org: "LA NACIÓN (2024)", url: "https://www.lanacion.com.ar/tecnologia/miden-el-impacto-ecologico-de-usar-chatgpt-3-2-litros-de-agua-por-10-a-50-consultas-nid18102024/", desc: "Cobertura en español del estudio 'Making AI Less Thirsty' sobre el entrenamiento de GPT-3: unos 700.000 litros de agua directa." },
   { title: "¿Cuánta agua consume realmente la IA?", org: "Nation.es (2026)", url: "https://nation.es/cuanta-agua-consume-realmente-la-ia/", desc: "Compara en español las cifras de Google, Mistral y la Universidad de California Riverside, y explica por qué no son directamente comparables entre sí." },
-  { title: "Guerra de recursos: el megaproyecto de OpenAI por US$ 25.000M tensiona el agua, la energía y el cobre en Argentina", org: "Acero y Roca (2026)", url: "https://aceroyroca.com/2026/08/08/noticias-openai-stargate-data-center-cobre-rigi-argentina/", desc: "Cobertura en español de Stargate Argentina (Neuquén, hasta 500 MW), con la estimación de 7,1 m³ de agua por cada MWh generado (directa e indirecta) para este tipo de mega centros de datos." },
+  { title: "Guerra de recursos: el megaproyecto de OpenAI por US$ 25.000M tensiona el agua, la energía y el cobre en Argentina", org: "Acero y Roca (2026)", url: "https://aceroyroca.com/2026/08/08/noticias-openai-stargate-data-center-cobre-rigi-argentina/", desc: "Cobertura en español de Stargate Argentina (Neuquén, hasta 500 MW), con la estimación de 7,1 m³ de agua por cada MWh (directa e indirecta combinadas) para este tipo de mega centros de datos. En SequIA se usa solo como escenario de referencia: la parte indirecta se calcula con 1,5 L/kWh." },
 ];
 
 function SourcesList() {
@@ -3041,7 +3301,7 @@ function DatosFuentesModal({ onClose }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 16 }}>
           <StatBox icon={Droplet} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,26 mL" label="Agua directa por consulta de texto" />
-          <StatBox icon={Factory} color="var(--dark-panel)" bg="var(--acc-blue-bg)" value="≈7,1 L" label="Agua indirecta por kWh en un mega centro de datos" />
+          <StatBox icon={Factory} color="var(--dark-panel)" bg="var(--acc-blue-bg)" value="≈1,5 L" label="Agua indirecta por kWh (rango 0,5–2,5; mega centros: hasta ≈7,1 L, directa + indirecta)" />
           <StatBox icon={Zap} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,24 Wh" label="Electricidad por consulta de texto mediana (Gemini, 2025)" />
         </div>
 
