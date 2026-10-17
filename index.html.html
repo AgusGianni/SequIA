@@ -6,7 +6,7 @@
 <title>SequIA — El costo oculto de la IA</title>
 
 <link rel="manifest" href="./manifest.json" />
-<meta name="theme-color" content="#2952E3" />
+<meta name="theme-color" content="#4FD6FF" />
 <link rel="icon" href="./icon-192.png" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💧</text></svg>" />
 
@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -335,7 +335,7 @@ function App() {
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Bowlby+One&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap');
       :root {
         --bg: #F7F4EE;
         --paper: #FFFFFF;
@@ -368,7 +368,8 @@ function GlobalStyle() {
         --acc-orange: #FF6A00;
         --acc-orange-bg: #FFE9DA;
         --logo-cyan: #4FD6FF;
-        --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+        --font-display: 'Bowlby One', 'Newsreader', Georgia, serif;
+        --pop-ink: #14181F; --pop-cyan: #4FD6FF; --pop-or: #FF6A00;
         --font-body: 'Inter', sans-serif;
         --font-mono: 'IBM Plex Mono', monospace;
       }
@@ -432,6 +433,23 @@ function GlobalStyle() {
       @keyframes mkIn { to { background-size: 100% 100%; } }
       .hi-ink-rest { border: 1.5px solid var(--ink) !important; box-shadow: 3px 3px 0 var(--ink); }
       .hi-ink { border: 2px solid var(--ink) !important; box-shadow: 4px 4px 0 var(--ink); transform: rotate(-.4deg); }
+
+      /* ===== Estética "fanzine pop": la misma del sitio Sed de Datos ===== */
+      [style*="--font-display"][style*="italic"] { font-style: normal !important; font-weight: 400 !important; text-transform: uppercase; letter-spacing: 0 !important; line-height: 1.15; }
+      [style*="--font-display"]:not([style*="italic"]) { font-weight: 400 !important; letter-spacing: 0 !important; }
+      .hi-card:not([style*="border-left"]) { border: 2px solid var(--pop-ink) !important; box-shadow: 4px 4px 0 var(--pop-ink); border-radius: 12px !important; }
+      .hi-ink-rest { border: 2px solid var(--pop-ink) !important; box-shadow: 4px 4px 0 var(--pop-ink); border-radius: 10px !important; }
+      .hi-ink { border: 3px solid var(--pop-ink) !important; box-shadow: 5px 5px 0 var(--pop-or); border-radius: 10px !important; }
+      .hi-pop-btn { transition: transform .25s cubic-bezier(.22,.61,.36,1), box-shadow .25s cubic-bezier(.22,.61,.36,1); }
+      .hi-pop-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--pop-ink) !important; filter: none; }
+      .hi-pop-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--pop-ink) !important; }
+      .mk { background-image: none !important; background-color: var(--mk-bg, var(--pop-cyan)); border: 2px solid var(--pop-ink); padding: 0 .2em; color: var(--pop-ink); animation: none; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+      .mk-orange { --mk-bg: var(--pop-or); }
+      .mk-cyan { --mk-bg: var(--pop-cyan); }
+      .mk-blue { --mk-bg: var(--acc-blue); color: #fff; }
+      .hi-stamp { display: inline-block; background: var(--pop-cyan); color: var(--pop-ink); border: 2px solid var(--pop-ink); padding: .2rem .65rem; font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; box-shadow: 3px 3px 0 var(--pop-ink); }
+      .hi-stamp--or { background: var(--pop-or); }
+      .hi-hl { background: var(--pop-cyan); color: var(--pop-ink); border: 3px solid var(--pop-ink); padding: 0 .22em; margin: 0 .04em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
       .hi-water { position: fixed; left: 0; right: 0; bottom: 0; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden;
         opacity: min(1, calc(var(--water-lv, 0) * 40)); transform: translateY(calc((1 - var(--water-lv, 0)) * 100% + 6px)); transition: transform 1.8s cubic-bezier(.3,.7,.2,1); }
       .hi-water-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
@@ -557,17 +575,17 @@ const styles = {
 
 const splashStyles = {
   wrap: { position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#2952E3", fontFamily: "var(--font-body)", padding: 24, textAlign: "center" },
-  card: { width: 190, padding: "30px 20px 26px", borderRadius: 24, background: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 18px 50px rgba(6,38,74,0.35)" },
-  title: { fontFamily: "var(--font-body)", fontStyle: "normal", fontWeight: 800, fontSize: 30, color: "#2952E3", margin: "14px 0 0", letterSpacing: "-0.02em" },
+  card: { width: 200, padding: "30px 20px 26px", borderRadius: 24, background: "#FFFFFF", border: "3px solid #14181F", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "8px 8px 0 #14181F" },
+  title: { fontFamily: "var(--font-display)", fontStyle: "normal", fontWeight: 400, fontSize: 28, color: "#2952E3", margin: "14px 0 0", textTransform: "uppercase" },
   dot: { width: 8, height: 8, borderRadius: "50%", background: "#FFFFFF", display: "inline-block" },
 };
 
 // Marca de la app: el mismo logo de 3 puntos conectados que usa el sitio web
 // "SequIA", para que ambos productos compartan identidad visual.
-function BrandMark({ size = 30, dark = false }) {
-  const color = dark ? "var(--logo-cyan)" : "var(--acc-blue)";
+function BrandMark({ size = 30, dark = false, ink = false }) {
+  const color = ink ? "var(--pop-ink)" : (dark ? "var(--logo-cyan)" : "var(--acc-blue)");
   return (
-    <svg className="hi-logo-pulse" width={size} height={size} viewBox="0 0 30 30" fill="none" style={{ flexShrink: 0, borderRadius: "50%" }}>
+    <svg className={ink ? undefined : "hi-logo-pulse"} width={size} height={size} viewBox="0 0 30 30" fill="none" style={{ flexShrink: 0, borderRadius: "50%" }}>
       <circle cx="8" cy="8" r="6" fill={color} />
       <circle cx="8" cy="22" r="4" fill={color} />
       <circle cx="22" cy="15" r="3" fill={color} />
@@ -683,32 +701,32 @@ function ConfirmExitModal({ onCancel, onConfirm }) {
 
 function Header({ onInstallClick, onHomeClick, compact }) {
   return (
-    <div style={{ background: "var(--paper)", borderRadius: 10, padding: "16px 20px", marginBottom: 14, borderBottom: "1px solid var(--line)" }}>
+    <div style={{ background: "var(--pop-cyan)", borderRadius: 12, padding: "14px 18px", marginBottom: 14, border: "3px solid var(--pop-ink)", boxShadow: "5px 5px 0 var(--pop-ink)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onHomeClick} aria-label="Ir al inicio" title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}>
-            <BrandMark />
+            <BrandMark ink />
           </button>
           <div>
-            <h1 style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
-              <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", cursor: "pointer", textAlign: "left" }}>SequIA</button>
+            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 19, margin: 0, color: "var(--pop-ink)", lineHeight: 1.1, textTransform: "uppercase" }}>
+              <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", textTransform: "inherit", cursor: "pointer", textAlign: "left" }}>SequIA</button>
             </h1>
-            {!compact && <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0", fontFamily: "var(--font-body)" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
+            {!compact && <p style={{ fontSize: 11.5, color: "var(--pop-ink)", margin: "4px 0 0", fontFamily: "var(--font-body)", fontWeight: 500 }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
             {!compact && <a
               href="https://seddedatos.com.ar/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5, fontFamily: "var(--font-body)" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 800, color: "var(--pop-ink)", textDecoration: "underline", marginTop: 5, fontFamily: "var(--font-body)" }}
             >
               Sed de Datos <ExternalLink size={10} />
             </a>}
           </div>
         </div>
-        <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn" style={{
-          background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: "50%",
-          width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+        <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn hi-pop-btn" style={{
+          background: "var(--pop-or)", border: "2px solid var(--pop-ink)", borderRadius: "50%", boxShadow: "3px 3px 0 var(--pop-ink)",
+          width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
         }}>
-          <Smartphone size={16} color="var(--acc-blue)" />
+          <Smartphone size={17} color="#fff" />
         </button>
       </div>
     </div>
@@ -716,19 +734,20 @@ function Header({ onInstallClick, onHomeClick, compact }) {
 }
 
 const primaryBtn = {
-  background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 6,
-  padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  background: "var(--pop-or)", color: "#fff", border: "2px solid var(--pop-ink)", borderRadius: 9999,
+  padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "3px 3px 0 var(--pop-ink)",
   display: "inline-flex", alignItems: "center", gap: 6
 };
 const ghostBtn = {
-  background: "transparent", border: "1px solid var(--line)", borderRadius: 6, padding: "8px 14px",
-  fontSize: 12.5, fontFamily: "var(--font-body)", color: "var(--ink-soft)", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600
+  background: "#fff", border: "2px solid var(--pop-ink)", borderRadius: 9999, padding: "8px 14px",
+  fontSize: 12.5, fontFamily: "var(--font-body)", color: "var(--pop-ink)", cursor: "pointer", boxShadow: "3px 3px 0 var(--pop-ink)",
+  display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700
 };
 const pillBadge = (color, bg) => ({
-  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700,
-  color, textTransform: "uppercase", letterSpacing: "0.06em",
-  background: bg, border: `1px solid ${color}`, borderRadius: 20, padding: "5px 12px"
+  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, fontFamily: "var(--font-mono)",
+  color: "var(--pop-ink)", textTransform: "uppercase", letterSpacing: "0.1em",
+  background: color === "var(--acc-orange)" ? "var(--pop-or)" : "var(--pop-cyan)", border: "2px solid var(--pop-ink)", borderRadius: 0, padding: "4px 10px",
+  boxShadow: "3px 3px 0 var(--pop-ink)"
 });
 
 function Inicio({ setTab }) {
@@ -738,7 +757,7 @@ function Inicio({ setTab }) {
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px 48px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "relative" }}>
           <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>◈ El costo oculto de la IA</span>
-          <h2 style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 23, lineHeight: 1.35, margin: "18px 0 14px", color: "var(--ink)", textTransform: "uppercase" }}>
             Cada consulta a una IA gasta <span className="mk mk-orange">electricidad</span> y también <span className="mk mk-cyan">agua</span>.
           </h2>
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
@@ -753,10 +772,10 @@ function Inicio({ setTab }) {
             className="hi-btn hi-glow"
             style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "14px 16px", borderRadius: 10, border: "none", cursor: "pointer",
-              fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15,
-              background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))",
-              color: "var(--on-accent)",
+              padding: "14px 16px", borderRadius: 9999, border: "2px solid var(--pop-ink)", cursor: "pointer", boxShadow: "4px 4px 0 var(--pop-ink)",
+              fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 15, textTransform: "uppercase",
+              background: "var(--pop-or)",
+              color: "#fff",
             }}
           >
             <Gamepad2 size={18} /> Jugar SequIA
@@ -769,7 +788,7 @@ function Inicio({ setTab }) {
           Dos tipos de consumo de agua
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <div className="hi-lift" style={{ background: "var(--acc-blue)", borderRadius: 8, padding: 14, border: "1px solid rgba(255,255,255,0.12)", animationDelay: "0ms" }}>
+          <div className="hi-lift" style={{ background: "var(--acc-blue)", borderRadius: 8, padding: 14, border: "2px solid var(--pop-ink)", boxShadow: "3px 3px 0 var(--pop-ink)", animationDelay: "0ms" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <Server size={15} color="#FFFFFF" />
               <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>Agua directa</span>
@@ -778,7 +797,7 @@ function Inicio({ setTab }) {
               La que se usa dentro del centro de datos para enfriar los servidores, muchas veces por evaporación en torres de refrigeración.
             </p>
           </div>
-          <div className="hi-lift" style={{ background: "var(--dark-panel)", borderRadius: 8, padding: 14, border: "1px solid rgba(255,255,255,0.12)", animationDelay: "60ms" }}>
+          <div className="hi-lift" style={{ background: "var(--dark-panel)", borderRadius: 8, padding: 14, border: "2px solid var(--pop-ink)", boxShadow: "3px 3px 0 var(--pop-ink)", animationDelay: "60ms" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <Factory size={15} color="#FFFFFF" />
               <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>Agua indirecta</span>
@@ -2231,14 +2250,14 @@ function buildShareCanvas(d) {
   c.width = W; c.height = H;
   const g = c.getContext("2d");
   const INK = "#14181F", BLUE = "#2952E3", SOFT = "#5B6472";
-  g.fillStyle = "#F7F4EE"; g.fillRect(0, 0, W, H);
-  g.fillStyle = "rgba(20,24,31,0.08)";
+  g.fillStyle = "#4FD6FF"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(20,24,31,0.14)";
   for (let x = 30; x < W; x += 40) for (let y = 30; y < H; y += 40) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
   g.fillStyle = INK; g.fillRect(84, 104, 920, 1140);
   g.fillStyle = "#FFFFFF"; g.fillRect(70, 90, 920, 1140);
   g.lineWidth = 6; g.strokeStyle = INK; g.strokeRect(70, 90, 920, 1140);
   g.textAlign = "left"; g.textBaseline = "alphabetic";
-  g.fillStyle = BLUE; g.font = "italic 700 64px Newsreader, Georgia, serif"; g.fillText("SequIA", 120, 190);
+  g.fillStyle = INK; g.font = "400 62px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText("SEQUIA", 120, 190);
   g.fillStyle = SOFT; g.font = "500 26px Inter, sans-serif";
   wrapCanvasText(g, "Un juego sobre la IA, el agua y las decisiones que no vemos.", 120, 232, 560, 34);
   // Gota
@@ -2252,11 +2271,11 @@ function buildShareCanvas(d) {
   // Final
   g.textAlign = "center";
   g.font = "120px sans-serif"; g.fillStyle = INK; g.fillText(d.emoji, W / 2, 470);
-  g.fillStyle = d.color; g.font = "italic 700 76px Newsreader, Georgia, serif"; g.fillText(d.title, W / 2, 575);
+  g.fillStyle = d.color; g.font = "400 66px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText(d.title.toUpperCase(), W / 2, 575);
   g.fillStyle = INK; g.font = "500 32px Inter, sans-serif";
   wrapCanvasText(g, d.tagline, W / 2, 640, 780, 44);
   // Cifra principal
-  g.fillStyle = d.waterColor; g.font = "700 150px Newsreader, Georgia, serif"; g.fillText(d.water + " L", W / 2, 930);
+  g.fillStyle = d.waterColor; g.font = "400 130px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText(d.water + " L", W / 2, 930);
   g.fillStyle = INK; g.font = "600 36px Inter, sans-serif"; g.fillText("de agua gastó mi centro de datos", W / 2, 990);
   g.fillStyle = SOFT; g.font = "500 32px Inter, sans-serif"; g.fillText(`≈ ${d.glasses} vasos de agua · ${d.served} consultas atendidas`, W / 2, 1050);
   g.fillStyle = INK; g.font = "600 30px Inter, sans-serif"; g.fillText(d.meta, W / 2, 1120);
