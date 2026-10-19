@@ -1,0 +1,3095 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>SequIA — El costo oculto de la IA</title>
+
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#06264A" />
+<link rel="icon" href="./sequia-favicon.ico" sizes="48x48" />
+<link rel="icon" type="image/png" sizes="32x32" href="./sequia-favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="./sequia-favicon-16.png" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="SequIA" />
+<link rel="apple-touch-icon" href="./sequia-apple-touch-icon.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #F7F4EE; }
+  #root { min-height: 100vh; }
+  #boot-fallback { font-family: Inter, sans-serif; padding: 40px; text-align: center; color: #5B6472; }
+  #boot-error { font-family: Inter, sans-serif; padding: 24px; text-align: left; color: #C0504D; background: #FBEAEA; border-radius: 10px; margin: 20px; white-space: pre-wrap; font-size: 13px; display: none; }
+  #boot-error b { display: block; margin-bottom: 8px; font-size: 15px; }
+</style>
+</head>
+<body>
+<div id="root"><div id="boot-fallback">Cargando SequIA…</div></div>
+<div id="boot-error"></div>
+
+<script>
+  function showBootError(msg) {
+    var box = document.getElementById('boot-error');
+    if (!box) return;
+    box.style.display = 'block';
+    box.innerHTML = '<b>No se pudo cargar la app</b>' + msg;
+  }
+  window.addEventListener('error', function (e) {
+    var detail = e.message || (e.error && e.error.message) || 'Error desconocido';
+    var loc = e.filename ? (' — ' + e.filename.split('/').pop() + ':' + e.lineno) : '';
+    showBootError(detail + loc);
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    showBootError('Promesa rechazada: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {
+        // si el service worker no se puede registrar (ej. abierto como archivo
+        // local, sin https), la app sigue funcionando igual, solo sin offline
+      });
+    });
+  }
+</script>
+
+<script type="text/babel" data-presets="react,env">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+const { createPortal } = ReactDOM;
+
+// --- Kit de íconos propio, sin depender de ningún CDN de terceros ---
+function mkIcon(paths, viewBox) {
+  return function IconCmp({ size = 24, color = "currentColor", strokeWidth = 2, style, className }) {
+    return React.createElement("svg", {
+      width: size, height: size, viewBox: viewBox || "0 0 24 24", fill: "none",
+      stroke: color, strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, className
+    }, paths.map((p, i) => React.createElement("path", { key: i, d: p })));
+  };
+}
+function mkIconNodes(nodes, viewBox) {
+  return function IconCmp({ size = 24, color = "currentColor", strokeWidth = 2, style, className }) {
+    return React.createElement("svg", {
+      width: size, height: size, viewBox: viewBox || "0 0 24 24", fill: "none",
+      stroke: color, strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, className
+    }, nodes.map(([tag, attrs], i) => React.createElement(tag, { key: i, ...attrs })));
+  };
+}
+const Zap = mkIcon(["M13 2 3 14h9l-1 8 10-12h-9l1-8z"]);
+const Droplet = mkIcon(["M12 2.69 17.66 8.35a8 8 0 1 1-11.32 0z"]);
+const Droplets = mkIconNodes([
+  ["path", { d: "M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z" }],
+  ["path", { d: "M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97" }],
+]);
+const ChevronDown = mkIcon(["m6 9 6 6 6-6"]);
+const ListChecks = mkIconNodes([
+  ["path", { d: "m3 7 3 3 3-3" }], ["path", { d: "M6 10V5" }],
+  ["path", { d: "M13 6h8" }], ["path", { d: "M13 12h8" }], ["path", { d: "M13 18h8" }],
+  ["path", { d: "m3 17 3 3 3-3" }],
+]);
+const Link2 = mkIcon(["M9 17H7A5 5 0 0 1 7 7h2", "M15 7h2a5 5 0 1 1 0 10h-2", "M8 12h8"]);
+const RotateCcw = mkIcon(["M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", "M3 3v5h5"]);
+const Info = mkIconNodes([
+  ["circle", { cx: 12, cy: 12, r: 10 }], ["path", { d: "M12 16v-4" }], ["path", { d: "M12 8h.01" }],
+]);
+const ExternalLink = mkIcon(["M15 3h6v6", "M10 14 21 3", "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"]);
+const Award = mkIconNodes([
+  ["path", { d: "m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" }],
+  ["circle", { cx: 12, cy: 8, r: 6 }],
+]);
+const Sliders = mkIconNodes([
+  ["line", { x1: 4, x2: 4, y1: 21, y2: 14 }], ["line", { x1: 4, x2: 4, y1: 10, y2: 3 }],
+  ["line", { x1: 12, x2: 12, y1: 21, y2: 12 }], ["line", { x1: 12, x2: 12, y1: 8, y2: 3 }],
+  ["line", { x1: 20, x2: 20, y1: 21, y2: 16 }], ["line", { x1: 20, x2: 20, y1: 12, y2: 3 }],
+  ["line", { x1: 2, x2: 6, y1: 14, y2: 14 }], ["line", { x1: 10, x2: 14, y1: 8, y2: 8 }], ["line", { x1: 18, x2: 22, y1: 16, y2: 16 }],
+]);
+const Factory = mkIcon(["M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a1 1 0 0 0-1.51-.86L2 8Z", "M17 18h1", "M12 18h1", "M7 18h1"]);
+const Server = mkIconNodes([
+  ["rect", { width: 20, height: 8, x: 2, y: 2, rx: 2, ry: 2 }],
+  ["rect", { width: 20, height: 8, x: 2, y: 14, rx: 2, ry: 2 }],
+  ["line", { x1: 6, x2: 6.01, y1: 6, y2: 6 }], ["line", { x1: 6, x2: 6.01, y1: 18, y2: 18 }],
+]);
+const Waves = mkIcon([
+  "M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
+  "M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
+  "M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
+]);
+const Gamepad2 = mkIconNodes([
+  ["line", { x1: 6, x2: 10, y1: 12, y2: 12 }], ["line", { x1: 8, x2: 8, y1: 10, y2: 14 }],
+  ["line", { x1: 15, x2: 15.01, y1: 13, y2: 13 }], ["line", { x1: 18, x2: 18.01, y1: 11, y2: 11 }],
+  ["rect", { width: 20, height: 12, x: 2, y: 6, rx: 2 }],
+]);
+const Wind = mkIcon(["M12.8 19.6A2 2 0 1 0 14 16H2", "M17.5 8a2.5 2.5 0 1 1 2 4H2", "M9.8 4.4A2 2 0 1 1 11 8H2"]);
+const Snowflake = mkIcon(["M2 12h20", "M12 2v20", "m20 16-4-4 4-4", "m4 8 4 4-4 4", "m16 4-4 4-4-4", "m8 20 4-4 4 4"]);
+const Wallet = mkIconNodes([
+  ["path", { d: "M21 12V7H5a2 2 0 0 1 0-4h14v4" }],
+  ["path", { d: "M3 5v14a2 2 0 0 0 2 2h16v-5" }],
+  ["path", { d: "M18 12a2 2 0 0 0 0 4h4v-4Z" }],
+]);
+const TrendingUp = mkIconNodes([
+  ["polyline", { points: "22 7 13.5 15.5 8.5 10.5 2 17" }], ["polyline", { points: "16 7 22 7 22 13" }],
+]);
+const TrendingDown = mkIconNodes([
+  ["polyline", { points: "22 17 13.5 8.5 8.5 13.5 2 7" }], ["polyline", { points: "16 17 22 17 22 11" }],
+]);
+const AlertTriangle = mkIconNodes([
+  ["path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" }],
+  ["line", { x1: 12, x2: 12, y1: 9, y2: 13 }], ["line", { x1: 12, x2: 12.01, y1: 17, y2: 17 }],
+]);
+const MessageSquare = mkIcon(["M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"]);
+const ArrowUp = mkIcon(["m5 12 7-7 7 7", "M12 19V5"]);
+const Leaf = mkIcon(["M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z", "M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"]);
+const CheckCircle2 = mkIconNodes([
+  ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335" }], ["path", { d: "m9 11 3 3L22 4" }],
+]);
+const XCircle = mkIconNodes([
+  ["circle", { cx: 12, cy: 12, r: 10 }], ["path", { d: "m15 9-6 6" }], ["path", { d: "m9 9 6 6" }],
+]);
+const Brain = mkIcon([
+  "M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z",
+  "M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z",
+]);
+const Compass = mkIconNodes([
+  ["circle", { cx: 12, cy: 12, r: 10 }],
+  ["polygon", { points: "16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" }],
+]);
+const Thermometer = mkIcon(["M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"]);
+const Smartphone = mkIconNodes([
+  ["rect", { width: 14, height: 20, x: 5, y: 2, rx: 2, ry: 2 }], ["path", { d: "M12 18h.01" }],
+]);
+const Share = mkIcon(["M12 2v13", "m16 6-4-4-4 4", "M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"]);
+const CircleChevronDown = mkIconNodes([
+  ["circle", { cx: 12, cy: 12, r: 10 }],
+  ["path", { d: "m9 10 3 3 3-3" }],
+]);
+const SquarePlus = mkIconNodes([
+  ["rect", { width: 18, height: 18, x: 3, y: 3, rx: 2 }], ["path", { d: "M8 12h8" }], ["path", { d: "M12 8v8" }],
+]);
+const Users = mkIconNodes([
+  ["path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }],
+  ["circle", { cx: 9, cy: 7, r: 4 }],
+  ["path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }],
+  ["path", { d: "M16 3.13a4 4 0 0 1 0 7.75" }],
+]);
+const Shuffle = mkIcon([
+  "M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.8-1.1 2-1.7 3.3-1.7H20",
+  "m18 2 4 4-4 4",
+  "M2 6h1.4c1.3 0 2.5.6 3.3 1.7l.9 1.2",
+  "M14 18h6",
+  "m18 14 4 4-4 4",
+]);
+const X = mkIcon(["M18 6 6 18", "m6 6 12 12"]);
+
+
+
+
+// --- Datos base, con fuente ---
+// Google, "Measuring the environmental impact of delivering AI at Google Scale" (2025)
+const GOOGLE_ELECTRICITY_WH = 0.24;   // Wh por prompt de texto mediano en Gemini Apps
+const GOOGLE_DIRECT_WATER_ML = 0.26;  // mL de agua directa (in situ) por el mismo prompt
+
+// Metodología unificada con el sitio Sed de Datos:
+// - Agua indirecta (la que se gasta en generar la electricidad): valor central de 1,5 L por kWh,
+//   dentro del rango 0,5–2,5 L/kWh que usa la calculadora del sitio. Se aplica SOLO a la parte indirecta.
+// - Agua directa (refrigeración): 0,26 mL por consulta mediana de Gemini (Google, 2025), el extremo bajo
+//   del rango; el sitio usa además el extremo alto de UC Riverside (10–25 mL).
+// - Escenario "mega centro de datos": Acero y Roca (2026) cita ≈7,1 m³ de agua por MWh (= 7,1 L/kWh)
+//   para Stargate Argentina, sumando agua directa + indirecta. Es un escenario de referencia, no un
+//   insumo del cálculo: usarlo como solo indirecto y sumar aparte los 0,26 mL directos contaría el agua dos veces.
+const GRID_WATER_INTENSITY_L_PER_KWH = 1.5; // agua indirecta por kWh (valor central; rango 0,5–2,5)
+const MEGA_DC_COMBINED_L_PER_KWH = 7.1;     // referencia: directa + indirecta combinadas (no entra en el cálculo)
+// Los umbrales de agua por consulta de cada dificultad se calibraron con ~2 mL/consulta (versión anterior,
+// con 7,1 L/kWh) y se reescalaron ×0,36 al pasar a 1,5 L/kWh para conservar la dificultad relativa.
+const WATER_PENALTY_SLOPE = 8; // puntos de sostenibilidad perdidos por cada mL por encima del umbral (antes 3, con escala ×0,36)
+
+const PHONE_CHARGE_KWH = 0.015;  // carga típica de batería de celular (~15 Wh)
+const GLASS_OF_WATER_ML = 250;
+
+const numFmt = (n, d = 2) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: d }).format(n);
+
+function formatWater(ml) {
+  if (ml < 1000) return `${numFmt(ml, ml < 10 ? 2 : 1)} mL`;
+  return `${numFmt(ml / 1000, 1)} L`;
+}
+function formatEnergy(wh) {
+  if (wh < 1000) return `${numFmt(wh, wh < 10 ? 2 : 1)} Wh`;
+  return `${numFmt(wh / 1000, 2)} kWh`;
+}
+
+// Anima un número hacia su nuevo valor cada vez que cambia (conteo animado
+// tipo "juice" de videojuego, en vez de saltar directo al valor final).
+function useAnimatedNumber(target, duration = 550) {
+  const [display, setDisplay] = useState(target);
+  const prevRef = useRef(target);
+  useEffect(() => {
+    const start = prevRef.current;
+    const delta = target - start;
+    if (delta === 0) return;
+    const startTime = performance.now();
+    let raf;
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(start + delta * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else prevRef.current = target;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return display;
+}
+
+function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("inicio");
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  // Volver al inicio: si hay una partida en curso, antes pide confirmación.
+  const goHome = () => {
+    if (tab === "juego" && gameActive) { setConfirmExit(true); return; }
+    if (tab === "inicio") { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    setTab("inicio");
+  };
+
+  useEffect(() => {
+    if (typeof document !== "undefined") document.title = "SequIA — El costo oculto de la IA";
+  }, []);
+
+  useEffect(() => {
+    setLoaded(true);
+  }, []);
+
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (!loaded) {
+    return (
+      <div style={splashStyles.wrap}>
+        <GlobalStyle />
+        <div className="hi-splash-logo" style={splashStyles.badge}>
+          <BrandMark size={38} />
+        </div>
+        <h1 className="hi-splash-title" style={splashStyles.title}>SequIA</h1>
+        <p className="hi-splash-tag" style={splashStyles.tag}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>
+        <div style={{ display: "flex", gap: 6, marginTop: 26 }}>
+          <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: "0s" }} />
+          <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: ".15s" }} />
+          <span className="hi-dot" style={{ ...splashStyles.dot, animationDelay: ".3s" }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.app}>
+      <GlobalStyle />
+      <BackgroundFX />
+      <div style={styles.shell}>
+        <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} compact={tab !== "inicio"} />
+        {tab !== "inicio" && (
+          <button onClick={goHome} className="hi-btn" style={{ ...ghostBtn, marginBottom: 14 }}>
+            ← Volver al inicio
+          </button>
+        )}
+
+        {tab === "inicio" && <Inicio setTab={setTab} />}
+        {tab === "laboratorio" && <LaboratorioTab setTab={setTab} />}
+        {tab === "juego" && <Juego onActiveChange={setGameActive} />}
+      </div>
+      {showInstallGuide && <InstallGuideModal onClose={() => setShowInstallGuide(false)} />}
+      {confirmExit && <ConfirmExitModal onCancel={() => setConfirmExit(false)} onConfirm={() => { setConfirmExit(false); setTab("inicio"); }} />}
+      {showTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Volver arriba"
+          style={{
+            position: "fixed", bottom: 20, right: 20, width: 44, height: 44, borderRadius: "50%",
+            background: "var(--acc-blue)", border: "none", color: "var(--on-accent)", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 6px 18px rgba(20,24,31,0.18)", zIndex: 50
+          }}
+        >
+          <ArrowUp size={18} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function GlobalStyle() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&display=swap');
+      :root {
+        --bg: #F7F4EE;
+        --paper: #FFFFFF;
+        --paper-soft: #FBF8F2;
+        --ink: #14181F;
+        --ink-soft: #5B6472;
+        --line: #E4DFD3;
+        --on-accent: #FFFFFF;
+        --dark-panel: #06264A;
+        --acc-red: #C0504D;
+        --acc-red-bg: #FBEAEA;
+        --acc-green: #2F8F5B;
+        --acc-green-bg: #E7F5EC;
+        --acc-mustard: #B8792C;
+        --acc-mustard-bg: #FBF0E0;
+        --acc-blue: #2952E3;
+        --acc-blue-bg: #E7EDFC;
+        --acc-purple: #6C4FC9;
+        --acc-purple-bg: #EDE9FA;
+        --acc-teal: #1C8C82;
+        --acc-teal-bg: #E3F5F2;
+        --acc-rose: #B4497A;
+        --acc-rose-bg: #FBEAF2;
+        --acc-graphite: #5B6472;
+        --acc-graphite-bg: #ECEEF1;
+        --acc-indigo: #4A4FB0;
+        --acc-indigo-bg: #E9EAF8;
+        --acc-copper: #A85A2A;
+        --acc-copper-bg: #F7E9DD;
+        --acc-orange: #FF6A00;
+        --acc-orange-bg: #FFE9DA;
+        --logo-cyan: #4FD6FF;
+        --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+        --font-body: 'Inter', sans-serif;
+        --font-mono: 'IBM Plex Mono', monospace;
+      }
+      * { box-sizing: border-box; }
+      @keyframes glowPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(41,82,227,0.45); }
+        50% { box-shadow: 0 0 0 8px rgba(41,82,227,0); }
+      }
+      .hi-glow { animation: glowPulse 2.2s ease-in-out infinite; }
+      @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-4px); opacity: 1; } }
+      @keyframes splashLogo { 0% { opacity: 0; transform: scale(0.7); } 60% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
+      @keyframes splashFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes fillBar { from { width: 0; } }
+      @keyframes daySlide { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+      .hi-day-enter { animation: daySlide .3s ease-out both; }
+      .hi-card { animation: riseIn .35s ease-out both; }
+      .hi-spin { animation: spin 0.8s linear infinite; }
+      .hi-dot { animation: bounce 1.2s ease-in-out infinite; }
+      .hi-splash-logo { animation: splashLogo .5s cubic-bezier(.2,.8,.3,1.2) both; }
+      .hi-splash-title { animation: splashFade .4s ease-out .15s both; }
+      .hi-splash-tag { animation: splashFade .4s ease-out .25s both; }
+      .hi-row:hover { background: var(--paper-soft); }
+      .hi-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+      .hi-btn:active { transform: translateY(1px) scale(0.985); }
+      .hi-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .hi-bar { animation: fillBar .5s ease-out both; }
+      input[type=range] { accent-color: var(--acc-blue); }
+      .hi-btn:focus-visible, input:focus-visible, a:focus-visible {
+        outline: 2px solid var(--acc-blue); outline-offset: 2px; border-radius: 4px;
+      }
+      @keyframes heroPulse {
+        0%, 100% { filter: drop-shadow(0 0 4px rgba(41,82,227,0.35)); }
+        50% { filter: drop-shadow(0 0 14px rgba(41,82,227,0.65)); }
+      }
+      .hi-hero-pulse { animation: heroPulse 2.8s ease-in-out infinite; }
+      .hi-lift { transition: transform .18s ease, box-shadow .18s ease; }
+      .hi-lift:hover { transform: translateY(-3px) scale(1.015); box-shadow: 0 10px 24px rgba(20,24,31,0.14); }
+      @keyframes logoPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(41,82,227,0.35); }
+        50% { box-shadow: 0 0 0 7px rgba(41,82,227,0); }
+      }
+      .hi-logo-pulse { animation: logoPulse 2.6s ease-in-out infinite; }
+      .hi-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 4px; cursor: pointer; }
+      .hi-range::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: transparent; }
+      .hi-range::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+        background: var(--paper); border: 3px solid var(--thumb-color, var(--acc-blue)); margin-top: -5px;
+        box-shadow: 0 1px 3px rgba(20,24,31,0.3);
+      }
+      .hi-range::-moz-range-track { height: 6px; border-radius: 4px; background: var(--paper-soft); }
+      .hi-range::-moz-range-progress { height: 6px; border-radius: 4px; background: var(--thumb-color, var(--acc-blue)); }
+      .hi-range::-moz-range-thumb {
+        width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 3px solid var(--thumb-color, var(--acc-blue));
+      }
+      .mk { background-image: linear-gradient(transparent 42%, var(--mk, #FFD84D) 42%, var(--mk, #FFD84D) 92%, transparent 92%); background-repeat: no-repeat; background-size: 0% 100%; animation: mkIn .9s .35s cubic-bezier(.3,.7,.2,1) forwards; padding: 0 .12em; margin: 0 -.12em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+      .mk-cyan { --mk: rgba(79,214,255,0.55); }
+      .mk-blue { --mk: #A9BEFA; color: var(--dark-panel); font-weight: 700; }
+      .mk-orange { --mk: rgba(255,106,0,0.32); }
+      @keyframes mkIn { to { background-size: 100% 100%; } }
+      .hi-ink-rest { border: 1.5px solid var(--ink) !important; box-shadow: 3px 3px 0 var(--ink); }
+      .hi-ink { border: 2px solid var(--ink) !important; box-shadow: 4px 4px 0 var(--ink); transform: rotate(-.4deg); }
+      .hi-water { position: fixed; left: 0; right: 0; bottom: 0; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden;
+        opacity: min(1, calc(var(--water-lv, 0) * 40)); transform: translateY(calc((1 - var(--water-lv, 0)) * 100% + 6px)); transition: transform 1.8s cubic-bezier(.3,.7,.2,1); }
+      .hi-water-layer { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+      .hi-water-layer::before { content: ""; position: absolute; left: 0; top: 0; width: 200%; height: 22px; background-repeat: repeat-x; background-size: 50% 22px; animation: waterWave 9s linear infinite; }
+      .hi-water-layer::after { content: ""; position: absolute; left: 0; right: 0; top: 21px; bottom: 0; background: var(--c); }
+      .hi-water-back { --c: rgba(79,214,255,0.20); }
+      .hi-water-back::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 22' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 V22 H0 Z' fill='rgba(79,214,255,0.20)'/%3E%3C/svg%3E"); }
+      .hi-water-front { --c: rgba(41,82,227,0.12); top: 8px; }
+      .hi-water-front::before { animation-duration: 14s; animation-direction: reverse; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 22' preserveAspectRatio='none'%3E%3Cpath d='M0 12 Q75 0 150 12 T300 12 T450 12 T600 12 V22 H0 Z' fill='rgba(41,82,227,0.12)'/%3E%3C/svg%3E"); }
+      @keyframes waterWave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .hi-fx { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+      .hi-blob { position: absolute; border-radius: 50%; filter: blur(8px); animation: blobFloat 18s ease-in-out infinite; }
+      .hi-blob-b { animation-duration: 24s; animation-direction: reverse; }
+      @keyframes blobFloat { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(30px, 24px, 0) scale(1.12); } }
+      .hi-drop { position: absolute; bottom: -30px; opacity: 0; animation: dropRise 18s linear infinite; }
+      @keyframes dropRise {
+        0% { transform: translate3d(0, 0, 0); opacity: 0; }
+        10% { opacity: 0.55; }
+        85% { opacity: 0.4; }
+        100% { transform: translate3d(var(--sway, 20px), -115vh, 0); opacity: 0; }
+      }
+      .hi-wave { position: absolute; bottom: 0; left: 0; animation: waveShift 9s linear infinite; }
+      .hi-wave-b { animation-duration: 14s; animation-direction: reverse; }
+      @keyframes waveShift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @keyframes gotaJump { 0% { transform: translateY(0) scale(1); } 25% { transform: translateY(-16px) scale(0.95, 1.08); } 50% { transform: translateY(0) scale(1.08, 0.92); } 70% { transform: translateY(-6px); } 100% { transform: translateY(0) scale(1); } }
+      @keyframes gotaShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-6deg); } 40% { transform: translateX(6px) rotate(6deg); } 60% { transform: translateX(-4px) rotate(-3deg); } 80% { transform: translateX(4px) rotate(3deg); } }
+      .hi-jump { animation: gotaJump .9s ease-out 1 !important; }
+      .hi-shake { animation: gotaShake .7s ease-in-out 1 !important; }
+      @keyframes cardPop { 0% { transform: scale(1); } 40% { transform: scale(1.03) rotate(-0.6deg); } 100% { transform: scale(1) rotate(-0.4deg); } }
+      .hi-ink { animation: cardPop .35s ease-out 1; }
+      @keyframes iconWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+      .hi-ink .hi-icon-wig { animation: iconWiggle .5s ease-in-out 1; }
+      @keyframes deltaRise { 0% { opacity: 0; transform: translateY(14px) scale(0.8); } 60% { opacity: 1; transform: translateY(-3px) scale(1.08); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+      .hi-delta { display: inline-flex; animation: deltaRise .6s cubic-bezier(.2,.8,.3,1.2) both; }
+      @keyframes alertShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+      .hi-alert-in { animation: riseIn .35s ease-out both, alertShake .5s .35s ease-in-out 1; }
+      .hi-fall { position: fixed; left: 50%; top: 0; z-index: 40; pointer-events: none; animation: dropFall 1.1s cubic-bezier(.5,0,.9,.6) forwards; }
+      @keyframes dropFall { 0% { transform: translate(-50%, -30px) scale(1); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, calc((1 - var(--water-lv, 0.05)) * 100vh - 24px)) scale(0.6, 1.2); opacity: 0; } }
+      .hi-bob { animation: gotaBob 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+      @keyframes gotaBob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(1.03, 0.97); } }
+      .hi-wobble { animation: gotaWobble 3s ease-in-out infinite; transform-origin: 50% 100%; }
+      @keyframes gotaWobble { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+      .hi-bubble { position: relative; background: var(--acc-blue-bg); border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); box-shadow: 3px 3px 0 var(--ink); animation: riseIn .35s ease-out both; }
+      .hi-bubble::before { content: ""; position: absolute; left: -8px; top: 22px; width: 12px; height: 12px; background: var(--acc-blue-bg); border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
+      @keyframes popIn { 0% { transform: scale(0.4) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+      .hi-pop { display: inline-block; animation: popIn .7s cubic-bezier(.2,.8,.3,1.2) both; }
+      @keyframes confettiBurst { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+      .hi-confetti { position: absolute; left: 50%; top: 46px; width: 8px; height: 12px; border-radius: 2px; animation: confettiBurst 1.7s ease-out both; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    `}</style>
+  );
+}
+
+// El agua acumulada de la partida sube por la pantalla (misma idea que la
+// calculadora del sitio). El nivel lo escribe Juego en --water-lv (0 a 1).
+function BackgroundFX() {
+  return (
+    <div aria-hidden="true" className="hi-water">
+      <div className="hi-water-layer hi-water-back" />
+      <div className="hi-water-layer hi-water-front" />
+    </div>
+  );
+}
+
+// Confeti de un solo disparo para los finales positivos.
+function Confetti() {
+  const pieces = [
+    { dx: -150, dy: 40, rot: 260, c: "var(--acc-blue)", d: 0 },
+    { dx: -110, dy: -20, rot: -200, c: "var(--acc-orange)", d: 0.05 },
+    { dx: -75, dy: 90, rot: 340, c: "var(--logo-cyan)", d: 0.1 },
+    { dx: -40, dy: -40, rot: -280, c: "var(--acc-green)", d: 0 },
+    { dx: -15, dy: 120, rot: 180, c: "var(--acc-purple)", d: 0.15 },
+    { dx: 20, dy: -50, rot: 300, c: "var(--acc-blue)", d: 0.08 },
+    { dx: 50, dy: 100, rot: -240, c: "var(--acc-orange)", d: 0.02 },
+    { dx: 85, dy: -10, rot: 220, c: "var(--logo-cyan)", d: 0.12 },
+    { dx: 120, dy: 70, rot: -320, c: "var(--acc-green)", d: 0.06 },
+    { dx: 150, dy: 20, rot: 280, c: "var(--acc-purple)", d: 0.1 },
+    { dx: -95, dy: 130, rot: -160, c: "var(--acc-blue)", d: 0.18 },
+    { dx: 100, dy: 135, rot: 200, c: "var(--acc-orange)", d: 0.14 },
+    { dx: -5, dy: 60, rot: 120, c: "var(--logo-cyan)", d: 0.2 },
+    { dx: 65, dy: 45, rot: -90, c: "var(--acc-green)", d: 0.04 },
+  ];
+  return (
+    <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {pieces.map((p, i) => (
+        <span key={i} className="hi-confetti" style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy}px`, "--rot": `${p.rot}deg`, background: p.c, animationDelay: `${p.d}s` }} />
+      ))}
+    </div>
+  );
+}
+
+const styles = {
+  app: {
+    minHeight: "100%", padding: "24px 12px", fontFamily: "var(--font-body)", color: "var(--ink)",
+    backgroundColor: "var(--bg)",
+    backgroundImage: "radial-gradient(rgba(41,82,227,0.16) 1.3px, transparent 1.3px)",
+    backgroundSize: "22px 22px",
+  },
+  shell: { maxWidth: 720, margin: "0 auto", position: "relative" },
+};
+
+const splashStyles = {
+  wrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", fontFamily: "var(--font-body)", padding: 24, textAlign: "center" },
+  badge: { width: 78, height: 78, borderRadius: 20, background: "var(--paper)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(41,82,227,0.12)" },
+  title: { fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 28, color: "var(--ink)", margin: "18px 0 0", letterSpacing: "-0.01em" },
+  tag: { fontSize: 12.5, color: "var(--ink-soft)", margin: "6px 0 0", letterSpacing: "0.02em" },
+  dot: { width: 6, height: 6, borderRadius: "50%", background: "var(--acc-blue)", display: "inline-block" },
+};
+
+// Marca de la app: el mismo logo de 3 puntos conectados que usa el sitio web
+// "SequIA", para que ambos productos compartan identidad visual.
+function BrandMark({ size = 30, dark = false }) {
+  const color = dark ? "var(--logo-cyan)" : "var(--acc-blue)";
+  return (
+    <svg className="hi-logo-pulse" width={size} height={size} viewBox="0 0 30 30" fill="none" style={{ flexShrink: 0, borderRadius: "50%" }}>
+      <circle cx="8" cy="8" r="6" fill={color} />
+      <circle cx="8" cy="22" r="4" fill={color} />
+      <circle cx="22" cy="15" r="3" fill={color} />
+      <path d="M8 8L8 22M8 8L22 15" stroke={color} strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+// Instructivo para "instalar" la web app en la pantalla de inicio de un
+// iPhone (Safari no tiene instalación automática como Android/Chrome, así
+// que hay que guiar el paso manual: Compartir → Agregar a inicio).
+function InstallGuideModal({ onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(20,24,31,0.55)", zIndex: 100,
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="hi-card"
+        style={{
+          background: "var(--paper)", borderRadius: "20px 20px 0 0", padding: "22px 20px 28px",
+          width: "100%", maxWidth: 460, position: "relative",
+        }}
+      >
+        <button onClick={onClose} aria-label="Cerrar" style={{
+          position: "absolute", top: 14, right: 14, background: "var(--paper-soft)", border: "none",
+          borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+        }}>
+          <X size={15} color="var(--ink-soft)" />
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--acc-blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Smartphone size={19} color="var(--acc-blue)" />
+          </div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Instalá SequIA</div>
+        </div>
+        <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: "0 0 18px" }}>
+          Agregala a tu pantalla de inicio y abrila como una app, sin pasar por el navegador cada vez.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>1</div>
+            <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Tocá el ícono de <strong>Compartir</strong></p>
+            <Share size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>2</div>
+            <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Elegí <strong>"Agregar a pantalla de inicio"</strong></p>
+            <CircleChevronDown size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--acc-blue)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>3</div>
+            <p style={{ fontSize: 13, color: "var(--ink)", margin: 0, flex: 1 }}>Confirmá tocando <strong>"Añadir"</strong></p>
+            <SquarePlus size={20} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+          </div>
+        </div>
+
+        <button onClick={onClose} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", marginTop: 18, background: "var(--acc-blue)", color: "#FFFFFF" }}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Aviso antes de salir de una partida en curso: volver al inicio la descarta.
+function ConfirmExitModal({ onCancel, onConfirm }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return createPortal(
+    <div
+      onClick={onCancel}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-exit-title"
+      style={{ position: "fixed", inset: 0, background: "rgba(20,24,31,0.55)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "var(--font-body)" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: "var(--paper)", borderRadius: 16, padding: "22px 20px 18px", width: "100%", maxWidth: 360, boxShadow: "0 16px 40px rgba(20,24,31,0.28)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--acc-red-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AlertTriangle size={18} color="var(--acc-red)" />
+          </div>
+          <div id="confirm-exit-title" style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>¿Volver al inicio?</div>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 16px" }}>
+          Si salís ahora vas a perder la partida en curso.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button autoFocus onClick={onCancel} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", fontFamily: "var(--font-body)", background: "var(--acc-blue)", color: "#FFFFFF" }}>
+            Seguir jugando
+          </button>
+          <button onClick={onConfirm} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", color: "var(--acc-red)", borderColor: "var(--acc-red)" }}>
+            Salir
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function Header({ onInstallClick, onHomeClick, compact }) {
+  return (
+    <div style={{ background: "var(--paper)", borderRadius: 10, padding: "16px 20px", marginBottom: 14, borderBottom: "1px solid var(--line)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onHomeClick} aria-label="Ir al inicio" title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}>
+            <BrandMark />
+          </button>
+          <div>
+            <h1 style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 20, margin: 0, color: "var(--ink)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+              <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", cursor: "pointer", textAlign: "left" }}>SequIA</button>
+            </h1>
+            {!compact && <p style={{ fontSize: 11.5, color: "var(--ink-soft)", margin: "3px 0 0", fontFamily: "var(--font-body)" }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
+            {!compact && <a
+              href="https://seddedatos.com.ar/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "var(--acc-blue)", textDecoration: "none", marginTop: 5, fontFamily: "var(--font-body)" }}
+            >
+              Sed de Datos <ExternalLink size={10} />
+            </a>}
+          </div>
+        </div>
+        <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn" style={{
+          background: "var(--paper-soft)", border: "1px solid var(--line)", borderRadius: "50%",
+          width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+        }}>
+          <Smartphone size={16} color="var(--acc-blue)" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const primaryBtn = {
+  background: "var(--ink)", color: "var(--paper)", border: "none", borderRadius: 6,
+  padding: "10px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  display: "inline-flex", alignItems: "center", gap: 6
+};
+const ghostBtn = {
+  background: "transparent", border: "1px solid var(--line)", borderRadius: 6, padding: "8px 14px",
+  fontSize: 12.5, fontFamily: "var(--font-body)", color: "var(--ink-soft)", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600
+};
+const pillBadge = (color, bg) => ({
+  display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700,
+  color, textTransform: "uppercase", letterSpacing: "0.06em",
+  background: bg, border: `1px solid ${color}`, borderRadius: 20, padding: "5px 12px"
+});
+
+function Inicio({ setTab }) {
+  const [showDatos, setShowDatos] = useState(false);
+  return (
+    <div>
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "30px 24px 48px", marginBottom: 14, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "relative" }}>
+          <span style={pillBadge("var(--acc-blue)", "var(--acc-blue-bg)")}>◈ El costo oculto de la IA</span>
+          <h2 style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 27, lineHeight: 1.3, margin: "16px 0 12px", color: "var(--ink)", letterSpacing: "-0.01em" }}>
+            Cada consulta a una IA gasta <span className="mk mk-orange">electricidad</span> y también <span className="mk mk-cyan">agua</span>.
+          </h2>
+          <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
+            La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio <span className="mk mk-blue">gasto de agua escondido</span>.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 20px 4px" }}>
+            <GotaMascot mood="happy" size={58} />
+            <div className="hi-bubble" style={{ flex: 1 }}>¡Hola! Soy Gota. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.</div>
+          </div>
+          <button
+            onClick={() => setTab("juego")}
+            className="hi-btn hi-glow"
+            style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "14px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+              fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15,
+              background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))",
+              color: "var(--on-accent)",
+            }}
+          >
+            <Gamepad2 size={18} /> Jugar SequIA
+          </button>
+        </div>
+      </div>
+
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--ink)" }}>
+          Dos tipos de consumo de agua
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          <div className="hi-lift" style={{ background: "var(--acc-blue)", borderRadius: 8, padding: 14, border: "1px solid rgba(255,255,255,0.12)", animationDelay: "0ms" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Server size={15} color="#FFFFFF" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>Agua directa</span>
+            </div>
+            <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.55, margin: 0 }}>
+              La que se usa dentro del centro de datos para enfriar los servidores, muchas veces por evaporación en torres de refrigeración.
+            </p>
+          </div>
+          <div className="hi-lift" style={{ background: "var(--dark-panel)", borderRadius: 8, padding: 14, border: "1px solid rgba(255,255,255,0.12)", animationDelay: "60ms" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Factory size={15} color="#FFFFFF" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>Agua indirecta</span>
+            </div>
+            <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.75)", lineHeight: 1.55, margin: 0 }}>
+              La que consumen las centrales eléctricas para generar la electricidad que llega al centro de datos, sobre todo las térmicas.
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+          <button onClick={() => setTab("laboratorio")} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 140px", justifyContent: "center" }}>
+            <Sliders size={13} /> Laboratorio
+          </button>
+          <button onClick={() => setShowDatos(true)} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 140px", justifyContent: "center" }}>
+            <Link2 size={13} /> Datos y fuentes
+          </button>
+        </div>
+      </div>
+
+      {showDatos && <DatosFuentesModal onClose={() => setShowDatos(false)} />}
+    </div>
+  );
+}
+
+function StatBox({ icon: Icon, color, bg, value, label, delay }) {
+  const prevRef = useRef(value);
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    if (prevRef.current !== value) {
+      setPulse(true);
+      prevRef.current = value;
+      const t = setTimeout(() => setPulse(false), 550);
+      return () => clearTimeout(t);
+    }
+  }, [value]);
+  return (
+    <div
+      className="hi-card"
+      style={{
+        background: bg, borderRadius: 10, padding: 14, borderLeft: `3px solid ${color}`,
+        boxShadow: pulse ? `0 0 0 3px ${color}55` : "0 0 0 0 transparent",
+        transition: "box-shadow .55s ease",
+        animationDelay: delay ? `${delay}ms` : undefined,
+      }}
+    >
+      <Icon size={16} color={color} style={{ marginBottom: 8 }} />
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, lineHeight: 1.1, color, marginBottom: 4 }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--ink-soft)", lineHeight: 1.4 }}>{label}</div>
+    </div>
+  );
+}
+
+// Gauge semicircular tipo "sala de control": arco animado + número que
+// cuenta hacia el nuevo valor, en vez de una barra de progreso plana.
+function Gauge({ value, color, label }) {
+  const animated = useAnimatedNumber(value);
+  const prevRef = useRef(value);
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    if (prevRef.current !== value) {
+      setPulse(true);
+      prevRef.current = value;
+      const t = setTimeout(() => setPulse(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [value]);
+  const r = 50;
+  const arcLength = Math.PI * r;
+  const filled = Math.max(0, Math.min(arcLength, arcLength * (animated / 100)));
+  return (
+    <div className="hi-card" style={{
+      background: "var(--paper-soft)", borderRadius: 10, padding: "12px 14px 10px", textAlign: "center",
+      boxShadow: pulse ? `0 0 0 3px ${color}55` : "0 0 0 0 transparent", transition: "box-shadow .6s ease",
+    }}>
+      <div style={{ position: "relative", width: "100%", maxWidth: 150, margin: "0 auto" }}>
+        <svg viewBox="0 0 120 64" style={{ width: "100%", display: "block" }}>
+          <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="var(--paper)" strokeWidth="10" strokeLinecap="round" />
+          <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={`${filled} ${arcLength}`} />
+        </svg>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: -2, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 20, color }}>
+          {Math.round(animated)}
+        </div>
+      </div>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
+// Avatar circular de personaje: reemplaza el emoji suelto junto al texto por
+// una insignia consistente, para que los personajes se sientan como
+// personajes y no como una etiqueta de color.
+function CharacterAvatar({ character, size = 34 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: character.color + "22", border: `1.5px solid ${character.color}`,
+      display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.5,
+    }}>
+      {character.emoji}
+    </div>
+  );
+}
+
+// Hero visual de la pantalla de inicio del juego: una silueta simple de
+// centro de datos con una gota de agua pulsando arriba.
+function DataCenterHero() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
+      <svg width="108" height="132" viewBox="0 0 120 150" className="hi-hero-pulse">
+        <defs>
+          <linearGradient id="hiDropGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--acc-blue)" />
+            <stop offset="100%" stopColor="var(--dark-panel)" />
+          </linearGradient>
+          <clipPath id="hiDropClip">
+            <path d="M60 8 C40 45, 14 72, 14 98 C14 120, 35 136, 60 136 C85 136, 106 120, 106 98 C106 72, 80 45, 60 8 Z" />
+          </clipPath>
+        </defs>
+        <path d="M60 8 C40 45, 14 72, 14 98 C14 120, 35 136, 60 136 C85 136, 106 120, 106 98 C106 72, 80 45, 60 8 Z" fill="url(#hiDropGrad)" />
+        <g clipPath="url(#hiDropClip)" opacity="0.4" stroke="var(--paper)" strokeWidth="2" fill="none">
+          <line x1="0" y1="55" x2="120" y2="55" />
+          <line x1="0" y1="78" x2="120" y2="78" />
+          <line x1="0" y1="101" x2="120" y2="101" />
+          <line x1="35" y1="8" x2="35" y2="140" />
+          <line x1="60" y1="8" x2="60" y2="140" />
+          <line x1="85" y1="8" x2="85" y2="140" />
+        </g>
+        <g clipPath="url(#hiDropClip)" fill="var(--paper)" opacity="0.55">
+          <circle cx="35" cy="55" r="3.2" />
+          <circle cx="60" cy="78" r="3.2" />
+          <circle cx="85" cy="101" r="3.2" />
+          <circle cx="35" cy="101" r="3.2" />
+          <circle cx="85" cy="55" r="3.2" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function PlayCTA({ setTab, text }) {
+  return (
+    <button
+      onClick={() => setTab("juego")}
+      className="hi-btn hi-glow"
+      style={{
+        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        marginTop: 14, padding: "16px 18px", borderRadius: 10, border: "none", cursor: "pointer",
+        background: "linear-gradient(90deg, var(--dark-panel), var(--acc-blue))", color: "#FFFFFF"
+      }}
+    >
+      <div style={{ textAlign: "left" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14.5 }}>🎮 {text || "¿Y si manejaras vos un centro de datos?"}</div>
+        <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>Probá gestionar tu propio centro de datos de IA</div>
+      </div>
+      <Gamepad2 size={22} />
+    </button>
+  );
+}
+
+function LabSlider({ icon: Icon, label, value, onChange, min, max, step, suffix, color }) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon size={14} color={color} />
+          <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>{label}</label>
+        </div>
+        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color }}>{numFmt(value, 0)}{suffix}</span>
+      </div>
+      <input
+        type="range" className="hi-range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{
+          background: `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--line) ${pct}%, var(--line) 100%)`,
+          "--thumb-color": color,
+        }}
+      />
+    </div>
+  );
+}
+
+function WaterDropletMeter({ liters, max = 8 }) {
+  const pct = Math.max(0, Math.min(1, liters / max));
+  const fillY = 102 - pct * 88;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg width="86" height="104" viewBox="0 0 90 108">
+        <defs>
+          <clipPath id="dropClip">
+            <path d="M45 4 C 45 4, 10 50, 10 72 a 35 35 0 0 0 70 0 C 80 50, 45 4, 45 4 Z" />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#dropClip)">
+          <rect x="0" y="0" width="90" height="108" fill="var(--paper-soft)" />
+          <rect x="0" y={fillY} width="90" height="108" fill="var(--acc-blue)" style={{ transition: "y .4s ease" }} />
+        </g>
+        <path d="M45 4 C 45 4, 10 50, 10 72 a 35 35 0 0 0 70 0 C 80 50, 45 4, 45 4 Z" fill="none" stroke="var(--acc-blue)" strokeWidth="2" />
+      </svg>
+      <p style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--acc-blue)", margin: "4px 0 0" }}>{numFmt(liters, 2)} L/día</p>
+      <p style={{ fontSize: 10.5, color: "var(--ink-soft)", margin: "2px 0 0" }}>agua total</p>
+    </div>
+  );
+}
+
+function LaboratorioTab({ setTab }) {
+  const [demand, setDemand] = useState(1500);
+  const [tempMult, setTempMult] = useState(100);
+  const [efficiency, setEfficiency] = useState(20);
+  const [renewable, setRenewable] = useState(30);
+
+  const whPerQuery = GOOGLE_ELECTRICITY_WH * (1 - efficiency / 100);
+  const dailyKWh = (demand * whPerQuery) / 1000;
+  const dailyDirectWaterMl = demand * GOOGLE_DIRECT_WATER_ML * (tempMult / 100);
+  const dailyIndirectWaterL = dailyKWh * GRID_WATER_INTENSITY_L_PER_KWH * (1 - renewable / 100);
+  const dailyTotalWaterL = dailyIndirectWaterL + dailyDirectWaterMl / 1000;
+
+  const animKWh = useAnimatedNumber(dailyKWh, 280);
+  const animTotalWaterL = useAnimatedNumber(dailyTotalWaterL, 280);
+  const animDirectL = useAnimatedNumber(dailyDirectWaterMl / 1000, 280);
+  const animIndirectL = useAnimatedNumber(dailyIndirectWaterL, 280);
+
+  const glasses = (animTotalWaterL * 1000) / GLASS_OF_WATER_ML;
+  const phoneCharges = animKWh / PHONE_CHARGE_KWH;
+
+  const applyPreset = (p) => { setDemand(p.demand); setTempMult(p.tempMult); setEfficiency(p.efficiency); setRenewable(p.renewable); };
+
+  const chartData = [
+    { name: "Directa", value: Number(animDirectL.toFixed(3)) },
+    { name: "Indirecta", value: Number(animIndirectL.toFixed(3)) },
+  ];
+
+  return (
+    <div>
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14, borderTop: "4px solid var(--acc-blue)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <Sliders size={17} color="var(--acc-blue)" />
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>Laboratorio de experimentos</div>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 14px" }}>
+          Movés las variables y ves cómo cambian el agua y la energía, en vivo. Es una simulación educativa con las mismas constantes que usa el resto de la app, no representa un centro de datos real.
+        </p>
+
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+          {LAB_PRESETS.map(p => (
+            <button key={p.id} onClick={() => applyPreset(p)} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 auto", justifyContent: "center" }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <LabSlider icon={Users} label="Demanda de IA (consultas/día)" value={demand} onChange={setDemand} min={100} max={5000} step={100} suffix="" color="var(--acc-blue)" />
+        <LabSlider icon={Thermometer} label="Temperatura ambiente (% sobre lo normal)" value={tempMult} onChange={setTempMult} min={50} max={200} step={5} suffix="%" color="var(--acc-orange)" />
+        <LabSlider icon={TrendingUp} label="Eficiencia de los modelos" value={efficiency} onChange={setEfficiency} min={0} max={60} step={5} suffix="%" color="var(--acc-blue)" />
+        <LabSlider icon={Wind} label="Energía renovable" value={renewable} onChange={setRenewable} min={0} max={90} step={5} suffix="%" color="var(--acc-orange)" />
+      </div>
+
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-around", flexWrap: "wrap", gap: 12 }}>
+        <WaterDropletMeter liters={animTotalWaterL} />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Gauge value={Math.round(Math.min(100, (efficiency / 60) * 70 + (renewable / 90) * 30))} color="var(--acc-blue)" label="Eficiencia energética" />
+          <Gauge value={Math.round(Math.max(0, Math.min(100, 100 - ((tempMult - 50) / 150) * 100)))} color="var(--acc-orange)" label="Presión por temperatura" />
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
+        <StatBox icon={Zap} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={formatEnergy(animKWh * 1000)} label="Energía por día" delay={0} />
+        <StatBox icon={Droplets} color="var(--acc-orange)" bg="var(--acc-orange-bg)" value={`${numFmt(animTotalWaterL, 1)} L`} label="Agua total por día" delay={40} />
+        <StatBox icon={Droplet} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={formatWater(animDirectL * 1000)} label="Agua directa por día" delay={80} />
+        <StatBox icon={Waves} color="var(--acc-orange)" bg="var(--acc-orange-bg)" value={`${numFmt(animIndirectL, 1)} L`} label="Agua indirecta por día" delay={120} />
+      </div>
+
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 14, color: "var(--ink)" }}>
+          Agua directa vs. indirecta (por día, en litros)
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {chartData.map((d, i) => {
+            const maxVal = Math.max(chartData[0].value, chartData[1].value, 0.0001);
+            const pct = Math.max(2, (d.value / maxVal) * 100);
+            const barColor = i === 0 ? "var(--acc-blue)" : "var(--acc-orange)";
+            return (
+              <div key={d.name}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                  <span style={{ color: "var(--ink-soft)", fontWeight: 600 }}>{d.name}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)", fontWeight: 700 }}>{numFmt(d.value, 2)} L</span>
+                </div>
+                <div style={{ height: 10, background: "var(--paper-soft)", borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 5, transition: "width .3s ease" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
+        <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
+          Con estos valores, un solo día equivale a <strong style={{ color: "var(--acc-blue)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
+          {" "}<strong style={{ color: "var(--acc-orange)" }}>{numFmt(phoneCharges, 1)} cargas de celular</strong>. Probá mover una sola variable a la vez para ver qué es lo que más pesa.
+        </p>
+      </div>
+
+      <PlayCTA setTab={setTab} text="Ahora probá gestionarlo día a día, con presupuesto y eventos de por medio" />
+    </div>
+  );
+}
+
+function ResultBox({ icon: Icon, color, bg, label, value }) {
+  return (
+    <div className="hi-card" style={{ background: bg, borderRadius: 10, padding: 14, borderLeft: `3px solid ${color}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color }}>
+        <Icon size={14} />
+        <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</span>
+      </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 19, color }}>{value}</div>
+    </div>
+  );
+}
+
+// Las "trivia" (Mito/Dato/Depende) aparecen cada pocos días de partida y
+// están basadas en los mismos datos y fuentes que el resto de la app (ver
+// "Datos y fuentes" del inicio).
+const TRIVIA_BANK = [
+  {
+    id: "t1",
+    statement: "Una consulta de texto a una IA siempre consume exactamente la misma cantidad de agua, sin importar el modelo o el centro de datos.",
+    answer: "falso",
+    explanation: "Varía muchísimo según el modelo, el hardware, la tecnología de refrigeración y la matriz eléctrica del lugar donde está el centro de datos. Google reportó 0,26 mL de agua directa por prompt mediano en Gemini, pero eso no es un promedio universal.",
+  },
+  {
+    id: "t2",
+    statement: "Toda el agua que consume la IA se usa directamente para enfriar los servidores.",
+    answer: "falso",
+    explanation: "Gran parte es agua indirecta: la que se gasta para generar la electricidad que alimenta al centro de datos. Como referencia, en este juego la parte indirecta se calcula con 1,5 litros de agua por kWh (rango 0,5–2,5). Para mega centros de datos como los que se evalúan en Argentina (ej. Stargate, en Neuquén), se citó un escenario de unos 7,1 litros por kWh sumando consumo directo e indirecto.",
+  },
+  {
+    id: "t3",
+    statement: "Generar una imagen con IA consume más energía que una consulta de texto típica.",
+    answer: "verdadero",
+    explanation: "En promedio sí: estudios como el de Luccioni et al. (2024) midieron un consumo bastante mayor por imagen generada que por un prompt de texto mediano, aunque también varía según el modelo y la resolución.",
+  },
+  {
+    id: "t4",
+    statement: "Usar más energía renovable en un centro de datos reduce automáticamente su huella hídrica total.",
+    answer: "depende",
+    explanation: "Reduce el agua indirecta (la de generar electricidad), pero no toca el agua directa que se usa para refrigeración. Y algunas fuentes renovables, como la hidroeléctrica, también tienen su propio consumo de agua asociado.",
+  },
+  {
+    id: "t5",
+    statement: "Construir un centro de datos en una zona de clima frío elimina el problema del consumo de agua.",
+    answer: "depende",
+    explanation: "El clima frío reduce la necesidad de refrigeración activa, pero el centro de datos sigue consumiendo agua indirecta a través de la electricidad que usa, y eso depende de la matriz energética de esa región.",
+  },
+  {
+    id: "t6",
+    statement: "Todas las empresas de IA publican cifras oficiales y comparables sobre su consumo de agua.",
+    answer: "falso",
+    explanation: "No todas publican datos, y las que lo hacen usan metodologías distintas (qué cuentan como agua directa o indirecta, qué modelo midieron), por lo que las cifras de distintas empresas no siempre son comparables entre sí.",
+  },
+];
+
+function pickTrivia(usedIds) {
+  const available = TRIVIA_BANK.filter(t => !usedIds.includes(t.id));
+  const pool = available.length > 0 ? available : TRIVIA_BANK;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Escenarios donde hay que elegir, entre varias fuentes, cuál es la que
+// realmente sostiene el número con metodología verificable.
+const SOURCE_SCENARIOS = [
+  {
+    id: "s1",
+    prompt: "\"Circula un dato que dice que una consulta de IA gasta 5 litros de agua. ¿En qué fuente te basás para tu nota?\"",
+    sources: [
+      { id: "peer", label: "Estudio con metodología publicada por una empresa (Google, 2025)", type: "Informe técnico", reliable: true,
+        detail: "Es la fuente más confiable: publica su metodología y una cifra medida (0,26 mL por prompt mediano), aunque solo vale para ese modelo puntual." },
+      { id: "viral", label: "Publicación viral en redes sociales", type: "Red social", reliable: false,
+        detail: "No cita metodología ni fuente. Esa cifra suele mezclar el consumo de entrenar un modelo grande con el de una consulta cotidiana, que son cosas muy distintas." },
+      { id: "press", label: "Nota que cita 'fuentes de la industria' sin nombrarlas", type: "Prensa sin atribución", reliable: false,
+        detail: "Puede ser un buen punto de partida, pero sin saber a qué estudio original se refiere, no se puede verificar el número." },
+      { id: "noSource", label: "Un comentario en un foro sin ningún link", type: "Sin fuente", reliable: false,
+        detail: "Sin fuente verificable no hay forma de confirmar si el dato es real o inventado." },
+    ],
+  },
+  {
+    id: "s2",
+    prompt: "Alguien afirma que \"toda el agua de la IA se gasta enfriando los servidores\". ¿En qué fuente te basás para corregirlo?",
+    sources: [
+      { id: "lbnl", label: "Informe del Lawrence Berkeley National Laboratory (2023)", type: "Laboratorio de investigación", reliable: true,
+        detail: "Mide específicamente el agua usada para generar la electricidad (agua indirecta), que en muchos casos pesa más que la usada para refrigerar." },
+      { id: "company", label: "Comunicado de una empresa sin datos públicos", type: "Comunicado sin metodología", reliable: false,
+        detail: "Dice ser 'eficiente con el agua' pero no publica ninguna cifra ni metodología verificable." },
+      { id: "blog", label: "Blog personal que repite una cifra sin decir de dónde sale", type: "Blog sin cita", reliable: false,
+        detail: "Repite un número sin poder rastrear su origen." },
+      { id: "meme", label: "Un meme con una estadística \"impactante\"", type: "Red social", reliable: false,
+        detail: "Los memes priorizan el impacto sobre la precisión y casi nunca citan la fuente original." },
+    ],
+  },
+  {
+    id: "s3",
+    prompt: "\"Me dijeron que entrenar un modelo grande gasta lo mismo que millones de consultas normales. ¿Cómo lo confirmo?\"",
+    sources: [
+      { id: "arxiv", label: "Paper académico con datos de entrenamiento (arXiv)", type: "Paper revisado", reliable: true,
+        detail: "Es la fuente que mide específicamente el consumo de entrenar un modelo grande, un proceso mucho más intensivo que responder consultas sueltas." },
+      { id: "exec", label: "Declaración de un ejecutivo en una entrevista de TV", type: "Declaración pública", reliable: false,
+        detail: "Puede sonar convincente, pero sin publicar números ni metodología no se puede verificar lo que dice." },
+      { id: "forward", label: "Un mensaje reenviado por WhatsApp", type: "Cadena de mensajes", reliable: false,
+        detail: "Las cadenas suelen perder contexto y exagerar cifras a medida que se reenvían." },
+      { id: "anon", label: "Un usuario anónimo en un foro técnico", type: "Foro sin verificar", reliable: false,
+        detail: "Puede tener razón, pero sin credenciales ni fuente citada no hay forma de confirmarlo." },
+    ],
+  },
+];
+
+function pickSourceScenario(usedIds) {
+  const available = SOURCE_SCENARIOS.filter(s => !usedIds.includes(s.id));
+  const pool = available.length > 0 ? available : SOURCE_SCENARIOS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Las misiones marcan el ritmo narrativo de la partida. No bloquean el juego
+// si no se cumplen — solo dan contexto de historia y una recompensa extra
+// si te esforzás por algo puntual.
+const MISSION_DEFS = [
+  {
+    id: "m1", title: "Puesta en marcha",
+    narrative: "Firmaste el contrato: tenés que levantar el centro de datos y empezar a atender consultas de IA sin fundir el presupuesto en el primer tramo.",
+    hint: "Terminá esta etapa con presupuesto positivo.",
+    evaluate: (s) => s.budget > 0,
+    bonus: { type: "reputation", amount: 3 }, bonusLabel: "+3 reputación por arrancar con las cuentas en orden",
+  },
+  {
+    id: "m2", title: "Asegurar el suministro",
+    narrative: "El directorio quiere garantías de que no vas a depender solo de la red eléctrica convencional.",
+    hint: "Llegá a 30% de energía renovable.",
+    evaluate: (s) => s.renewable >= 30,
+    bonus: { type: "sustainability", amount: 3 }, bonusLabel: "+3 sostenibilidad por diversificar la energía",
+  },
+  {
+    id: "m3", title: "Cuidar el agua",
+    narrative: "Empiezan los reclamos por el uso de agua de la zona. Necesitás demostrar que estás invirtiendo en reducirlo.",
+    hint: "Llegá a 30% de enfriamiento eficiente.",
+    evaluate: (s) => s.cooling >= 30,
+    bonus: { type: "sustainability", amount: 3 }, bonusLabel: "+3 sostenibilidad por invertir en enfriamiento",
+  },
+  {
+    id: "m4", title: "La demanda explota",
+    narrative: "Un pico de uso de IA satura las proyecciones. Si no tenés capacidad, vas a dejar consultas sin atender.",
+    hint: "Mantené las consultas no atendidas por debajo del 5% del total.",
+    evaluate: (s) => (s.totalUnmet / Math.max(1, s.totalServed + s.totalUnmet)) < 0.05,
+    bonus: { type: "reputation", amount: 3 }, bonusLabel: "+3 reputación por sostener el servicio",
+  },
+  {
+    id: "m5", title: "Bajo la lupa",
+    narrative: "Una periodista y vecinos de la zona empiezan a hacer preguntas sobre el impacto ambiental de tu empresa.",
+    hint: "Mantené la reputación por encima de 50.",
+    evaluate: (s) => s.reputation >= 50,
+    bonus: { type: "sustainability", amount: 3 }, bonusLabel: "+3 sostenibilidad por sostener la confianza pública",
+  },
+  {
+    id: "m6", title: "Balance final",
+    narrative: "Se acerca el cierre de esta etapa: la empresa te pide presentar tu balance ambiental completo.",
+    hint: "Terminá con la sostenibilidad por encima de 50.",
+    evaluate: (s) => s.sustainability >= 50,
+    bonus: { type: "reputation", amount: 5 }, bonusLabel: "+5 reputación por un cierre transparente",
+  },
+];
+
+function missionIndexForDay(day, totalDays, count) {
+  const idx = Math.floor(((day - 1) / totalDays) * count);
+  return Math.min(count - 1, Math.max(0, idx));
+}
+
+function multiplierLabel(mult) {
+  const pct = Math.round((mult - 1) * 100);
+  if (pct === 0) return "normal";
+  return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
+function zoneEffectChips(z) {
+  return [
+    { icon: Droplet, label: "Agua directa", value: multiplierLabel(z.waterDirectMult), tone: z.waterDirectMult > 1 ? "var(--acc-red)" : z.waterDirectMult < 1 ? "var(--acc-green)" : "var(--ink-soft)" },
+    { icon: Factory, label: "Agua indirecta", value: multiplierLabel(z.waterIndirectMult), tone: z.waterIndirectMult > 1 ? "var(--acc-red)" : z.waterIndirectMult < 1 ? "var(--acc-green)" : "var(--ink-soft)" },
+    { icon: Wind, label: "Renovable al arrancar", value: `${z.startRenewable}%`, tone: "var(--acc-blue)" },
+    { icon: Snowflake, label: "Enfriamiento al arrancar", value: `${z.startCooling}%`, tone: "var(--acc-blue)" },
+    { icon: Wallet, label: "Presupuesto inicial", value: multiplierLabel(z.budgetMult), tone: z.budgetMult > 1 ? "var(--acc-green)" : z.budgetMult < 1 ? "var(--acc-red)" : "var(--ink-soft)" },
+  ];
+}
+
+const ZONES = [
+  { id: "seca", label: "Zona A — Muy seca", emoji: "🏜️",
+    desc: "Clima árido con sol casi todo el año. El agua escasea, pero el potencial solar es excelente.",
+    startRenewable: 35, startCooling: 0, waterDirectMult: 1.3, waterIndirectMult: 0.85, budgetMult: 1.0 },
+  { id: "humeda", label: "Zona B — Abundante agua", emoji: "🌧️",
+    desc: "Cerca de un río caudaloso. El agua sobra, pero el terreno y la logística salen caros.",
+    startRenewable: 15, startCooling: 5, waterDirectMult: 0.7, waterIndirectMult: 1.0, budgetMult: 0.85 },
+  { id: "fria", label: "Zona C — Clima frío", emoji: "❄️",
+    desc: "Frío casi todo el año: el aire exterior ayuda a refrigerar los servidores sin tanta agua.",
+    startRenewable: 20, startCooling: 20, waterDirectMult: 0.85, waterIndirectMult: 1.0, budgetMult: 1.0 },
+];
+
+// Agua "de infraestructura": la que se gasta fabricando el hardware (minería,
+// semiconductores, ensamblaje) y no en operar el centro de datos día a día.
+// Es una cifra ilustrativa, no una medición precisa — muy difícil de atribuir
+// por servidor — pero ayuda a visualizar que existe un tercer tipo de huella
+// además de la directa y la indirecta.
+const INFRA_WATER_L_PER_CAPACITY_UNIT = 0.03;
+
+// La dificultad no cambia solo el presupuesto: cambia cuánto juego hay.
+// tier 1 = simple y amable, tier 2 = juego completo, tier 3 = juego elaborado.
+const GAME_DIFFICULTIES = {
+  facil: {
+    label: "Fácil", tier: 1, days: 5, budget: 12000, demandBase: 420, demandStep: 95, severity: 0.75, threshold: 0.94,
+    actions: ["cooling", "renewable", "capacity"],
+    showRep: false, showEnergy: false, characters: false, trivia: false, missions: false, objectives: false, dataPanel: false, fines: false,
+    harsh: 0.6, repPenalty: 0.5,
+    tagline: "Para jugar tranquilo",
+    bullets: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+  },
+  normal: {
+    label: "Normal", tier: 2, days: 8, budget: 11000, demandBase: 500, demandStep: 130, severity: 1, threshold: 0.79,
+    actions: ["cooling", "renewable", "capacity", "efficiency", "audit"],
+    showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: false, dataPanel: false, fines: true,
+    harsh: 1, repPenalty: 1,
+    tagline: "El juego completo",
+    bullets: ["5 inversiones distintas", "6 misiones con premio", "Personajes que te piden decisiones", "Preguntas Mito / Dato / Depende"],
+  },
+  dificil: {
+    label: "Difícil", tier: 3, days: 10, budget: 10000, demandBase: 600, demandStep: 170, severity: 1.3, threshold: 0.65,
+    actions: ["cooling", "renewable", "capacity", "efficiency", "audit", "resilience"],
+    showRep: true, showEnergy: true, characters: true, trivia: true, missions: true, objectives: true, dataPanel: true, fines: true,
+    harsh: 1.6, repPenalty: 1.5,
+    tagline: "Para quien busca el desafío",
+    bullets: ["6 inversiones, con plan de contingencia", "3 objetivos de la dirección con seguimiento en vivo", "Panel de datos: agua por consulta y por tipo", "Crisis más seguidas y reputación más frágil"],
+  },
+};
+
+function freshGameState(diffKey, zone) {
+  const diff = GAME_DIFFICULTIES[diffKey];
+  const initialCapacity = 800;
+  return {
+    diffKey, diff, zone,
+    day: 1,
+    budget: Math.round(diff.budget * zone.budgetMult),
+    capacity: initialCapacity,
+    cooling: zone.startCooling,
+    renewable: zone.startRenewable,
+    efficiency: 0,
+    resilience: 0,
+    audited: false,
+    sustainability: 60,
+    reputation: 55,
+    lowSustainStreak: 0,
+    purchases: { cooling: 0, renewable: 0, capacity: 0, efficiency: 0, resilience: 0 },
+    totalServed: 0,
+    totalUnmet: 0,
+    totalKWh: 0,
+    totalWaterL: 0,
+    totalDirectWaterL: 0,
+    totalIndirectWaterL: 0,
+    totalInfraWaterL: Number((initialCapacity * INFRA_WATER_L_PER_CAPACITY_UNIT).toFixed(2)),
+    totalRevenue: 0,
+    totalFines: 0,
+    history: [],
+    event: null,
+    eventChoiceResolved: true,
+    demand: null,
+    dayResult: null,
+    finished: false,
+    knowledge: { correct: 0, total: 0 },
+    trivia: null,
+    usedTriviaIds: [],
+    usedSourceIds: [],
+    currentMissionIndex: 0,
+    missionsLog: [],
+    missionNote: null,
+  };
+}
+
+function actionCost(base, purchases) {
+  return Math.round(base * (1 + purchases * 0.25));
+}
+
+const GAME_ACTION_DEFS = [
+  { id: "cooling", label: "Enfriamiento eficiente", easyLabel: "Enfriar mejor", easyDesc: "Gastás menos agua para enfriar los servidores.", icon: Snowflake, color: "var(--acc-teal)", base: 1500,
+    desc: "+15% de eficiencia de enfriamiento (reduce el agua directa por consulta)." },
+  { id: "renewable", label: "Energía renovable", easyLabel: "Energía limpia", easyDesc: "Menos agua escondida en la electricidad que usás.", icon: Wind, color: "var(--acc-green)", base: 1200,
+    desc: "+15% de energía renovable (reduce el agua indirecta por consulta)." },
+  { id: "capacity", label: "Ampliar capacidad", easyLabel: "Más servidores", easyDesc: "Atendés más consultas por día.", icon: Server, color: "var(--acc-blue)", base: 2000,
+    desc: "+400 consultas/día de capacidad para no perder demanda." },
+  { id: "efficiency", label: "Optimizar modelos", icon: Sliders, color: "var(--acc-mustard)", base: 1800,
+    desc: "-10% de electricidad por consulta (modelos más chicos o mejor optimizados)." },
+  { id: "audit", label: "Auditoría y transparencia", icon: Award, color: "var(--acc-rose)", base: 800,
+    desc: "+8 de reputación al instante y baja el riesgo de escándalos mediáticos." },
+  { id: "resilience", label: "Plan de contingencia", icon: Thermometer, color: "var(--acc-copper)", base: 1400,
+    desc: "Amortigua olas de calor, sequías y recortes de agua: sus efectos pegan hasta 15% menos por cada plan (tope 50%)." },
+  { id: "save", label: "Ahorrar presupuesto", icon: Wallet, color: "var(--acc-graphite)", base: 0,
+    desc: "No invertís nada este día. Guardás plata para más adelante." },
+];
+
+function costFor(action, state) {
+  if (action.id === "save" || action.id === "audit") return action.base;
+  return actionCost(action.base, state.purchases[action.id] || 0);
+}
+
+const GAME_EVENTS = [
+  { id: "calm", weight: 30, label: "Día tranquilo", emoji: "☀️", desc: "Sin sorpresas, operación normal.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0 },
+  { id: "heatwave", weight: 11, label: "Ola de calor", emoji: "🔥", desc: "El enfriamiento necesita más agua de lo normal.", kind: "modifier", waterDirectMult: 1.4, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
+  { id: "drought", weight: 10, label: "Sequía regional", emoji: "🌵", desc: "La red eléctrica local recurre a generación más sedienta.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1.6, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
+  { id: "cutback", label: "Recorte de agua municipal", emoji: "🚱", weight: 8, desc: "El municipio limita el agua disponible para refrigeración.", kind: "modifier", waterDirectMult: 1.8, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
+  { id: "viral", weight: 11, label: "Consulta viral", emoji: "📈", desc: "Un pico de demanda inesperado golpea el data center.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1.8, capacityMult: 1, renewableBonus: 0 },
+  { id: "windy", weight: 9, label: "Día ventoso", emoji: "🌬️", desc: "La red eléctrica regional tira de más energía eólica hoy.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 25 },
+  { id: "maintenance", weight: 8, label: "Mantenimiento programado", emoji: "🔧", desc: "Parte de la capacidad está fuera de línea hoy.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 0.7, renewableBonus: 0 },
+  { id: "goodpress", weight: 8, label: "Buena prensa", emoji: "🎉", desc: "Un artículo destaca tus buenas prácticas.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0, reputationBonus: 10 },
+  { id: "journalist", weight: 4, label: "Una periodista pregunta por tu consumo de agua", emoji: "📰", kind: "choice",
+    character: { name: "La periodista", emoji: "📰", color: "var(--acc-rose)" },
+    desc: "\"Necesito saber de dónde salen esos números de consumo de agua que publican.\"",
+    options: [
+      { id: "transparent", label: "Responder con transparencia", effect: "+6 reputación (+10 si ya hiciste una auditoría)",
+        resolve: (s) => {
+          const bonus = s.audited ? 10 : 6;
+          return { patch: { reputation: Math.min(100, s.reputation + bonus) },
+            note: s.audited ? "Respondiste con transparencia y mostraste tu auditoría: +10 de reputación." : "Respondiste con transparencia: +6 de reputación." };
+        } },
+      { id: "dodge", label: "Evadir la pregunta", effect: "50% de nada, 50% de -10 reputación",
+        resolve: (s) => Math.random() < 0.5
+          ? { patch: { reputation: Math.max(0, s.reputation - 10) }, note: "Evadiste la pregunta y se filtró igual: -10 de reputación." }
+          : { patch: {}, note: "Evadiste la pregunta y no pasó nada... por ahora." } },
+    ] },
+  { id: "scientist", weight: 4, label: "La científica pide financiar un estudio de impacto", emoji: "🔬", kind: "choice",
+    character: { name: "La científica", emoji: "🔬", color: "var(--acc-blue)" },
+    desc: "\"Necesitamos datos antes de seguir escalando. Denme presupuesto para medir bien el consumo real.\"",
+    options: [
+      { id: "fund", label: "Financiar el estudio ($900)", effect: "-$900, +8% de eficiencia permanente",
+        resolve: (s) => s.budget < 900
+          ? { patch: {}, note: "Quisiste financiar el estudio pero no te alcanzó el presupuesto." }
+          : { patch: { budget: s.budget - 900, efficiency: Math.min(60, s.efficiency + 8) }, note: "Financiaste el estudio de la científica: +8% de eficiencia permanente." } },
+      { id: "skip", label: "Seguir creciendo sin esperar", effect: "-5 sostenibilidad",
+        resolve: (s) => ({ patch: { sustainability: Math.max(0, s.sustainability - 5) }, note: "Decidiste no esperar los datos: -5 de sostenibilidad." } ) },
+    ] },
+  { id: "ceo", weight: 4, label: "El CEO exige acelerar el crecimiento", emoji: "💼", kind: "choice",
+    character: { name: "El CEO", emoji: "💼", color: "var(--acc-copper)" },
+    desc: "\"Tenemos que crecer ya. Dupliquemos turnos y capacidad, después vemos el impacto.\"",
+    options: [
+      { id: "accelerate", label: "Acelerar el crecimiento", effect: "+400 capacidad, -10 reputación",
+        resolve: (s) => ({ patch: { capacity: s.capacity + 400, reputation: Math.max(0, s.reputation - 10) }, note: "Aceleraste el crecimiento por pedido del CEO: +400 de capacidad, pero -10 de reputación." }) },
+      { id: "cautious", label: "Crecer con cautela", effect: "+5 reputación",
+        resolve: (s) => ({ patch: { reputation: Math.min(100, s.reputation + 5) }, note: "Le explicaste al CEO que ibas a crecer con cautela: +5 de reputación." }) },
+    ] },
+  { id: "neighbor", weight: 4, label: "Una vecina reclama por el agua del barrio", emoji: "🏘️", kind: "choice",
+    character: { name: "Una vecina", emoji: "🏘️", color: "var(--acc-teal)" },
+    desc: "\"Necesitamos esa agua para la comunidad. ¿Van a reducir el consumo o no?\"",
+    options: [
+      { id: "commit", label: "Comprometerte a reducir el agua directa ($700)", effect: "-$700, +10% de enfriamiento",
+        resolve: (s) => s.budget < 700
+          ? { patch: {}, note: "Quisiste comprometerte pero no te alcanzó el presupuesto para las obras." }
+          : { patch: { budget: s.budget - 700, cooling: Math.min(90, s.cooling + 10) }, note: "Te comprometiste con la vecina e invertiste en reducir el agua directa: +10% de enfriamiento." } },
+      { id: "reject", label: "Rechazar el pedido", effect: "-15 reputación",
+        resolve: (s) => ({ patch: { reputation: Math.max(0, s.reputation - 15) }, note: "Rechazaste el pedido de la vecina: -15 de reputación." }) },
+    ] },
+  { id: "engineer", weight: 4, label: "El ingeniero propone optimizar los modelos", emoji: "🧑‍💻", kind: "choice",
+    character: { name: "El ingeniero", emoji: "🧑‍💻", color: "var(--acc-mustard)" },
+    desc: "\"Puedo optimizar los modelos que usamos y bajar el consumo por consulta. Necesito presupuesto.\"",
+    options: [
+      { id: "fund", label: "Financiar la optimización ($1000)", effect: "-$1000, +10% de eficiencia",
+        resolve: (s) => s.budget < 1000
+          ? { patch: {}, note: "No te alcanzó el presupuesto para financiar al ingeniero." }
+          : { patch: { budget: s.budget - 1000, efficiency: Math.min(60, s.efficiency + 10) }, note: "Financiaste al ingeniero: +10% de eficiencia." } },
+      { id: "later", label: "Decirle que no por ahora", effect: "sin cambios",
+        resolve: () => ({ patch: {}, note: "Le dijiste al ingeniero que esperara. Por ahora no cambia nada." }) },
+    ] },
+  { id: "official", weight: 4, label: "Un funcionario anuncia una nueva regulación ambiental", emoji: "🏛️", kind: "choice",
+    character: { name: "El funcionario", emoji: "🏛️", color: "var(--acc-purple)" },
+    desc: "\"Hay una nueva regulación sobre uso de agua en centros de datos. Tienen que adaptarse.\"",
+    options: [
+      { id: "comply", label: "Cumplir de inmediato ($600)", effect: "-$600, +8 reputación, +3 sostenibilidad",
+        resolve: (s) => s.budget < 600
+          ? { patch: {}, note: "Quisiste cumplir pero no te alcanzó el presupuesto." }
+          : { patch: { budget: s.budget - 600, reputation: Math.min(100, s.reputation + 8), sustainability: Math.min(100, s.sustainability + 3) }, note: "Cumpliste con la nueva regulación de inmediato: +8 reputación, +3 sostenibilidad." } },
+      { id: "delay", label: "Demorar el cumplimiento", effect: "-8 reputación, -3 sostenibilidad",
+        resolve: (s) => ({ patch: { reputation: Math.max(0, s.reputation - 8), sustainability: Math.max(0, s.sustainability - 3) }, note: "Demoraste el cumplimiento: el riesgo regulatorio te pasó factura ahora: -8 reputación, -3 sostenibilidad." }) },
+    ] },
+  { id: "sourcecheck", weight: 5, label: "Un dato dudoso sobre consumo de agua empieza a circular", emoji: "🔍", kind: "sources",
+    character: { name: "La periodista", emoji: "📰", color: "var(--acc-rose)" } },
+];
+
+// El pool de eventos depende de la dificultad: en Fácil solo hay climas y
+// demanda (sin personajes ni decisiones), y en Difícil las crisis pesan más.
+function pickEvent(diff) {
+  const d = diff || GAME_DIFFICULTIES.normal;
+  const pool = GAME_EVENTS
+    .filter(e => d.characters || e.kind === "modifier")
+    .filter(e => !(d.tier === 1 && (e.id === "cutback" || e.id === "drought")))
+    .map(e => {
+      let w = e.weight;
+      if (e.kind === "modifier" && (e.resistible || e.id === "viral")) w *= d.harsh;
+      if (e.kind !== "modifier" && d.tier === 3) w *= 1.5;
+      return { e, w };
+    });
+  const total = pool.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for (const x of pool) {
+    if (r < x.w) return x.e;
+    r -= x.w;
+  }
+  return pool[0].e;
+}
+
+function rollDemand(day, diff, event) {
+  const base = diff.demandBase + day * diff.demandStep;
+  const noise = 0.85 + Math.random() * 0.3;
+  const mult = event.kind === "modifier" ? event.demandMult : 1;
+  return Math.round(base * noise * mult);
+}
+
+function gradeFor(score) {
+  if (score >= 85) return { letter: "A", label: "Data center consciente", color: "var(--acc-green)" };
+  if (score >= 65) return { letter: "B", label: "Bastante equilibrado", color: "var(--acc-teal)" };
+  if (score >= 45) return { letter: "C", label: "A mitad de camino", color: "var(--acc-mustard)" };
+  if (score >= 25) return { letter: "D", label: "Creció a las apuradas", color: "var(--acc-purple)" };
+  return { letter: "F", label: "Data center voraz", color: "var(--acc-red)" };
+}
+
+function reputationGrade(score) {
+  if (score >= 80) return { label: "Muy confiable", color: "var(--acc-green)" };
+  if (score >= 55) return { label: "Reputación estable", color: "var(--acc-teal)" };
+  if (score >= 30) return { label: "Bajo sospecha", color: "var(--acc-mustard)" };
+  return { label: "Reputación dañada", color: "var(--acc-red)" };
+}
+
+// --- Fase 5: 5 puntajes de cierre, finales múltiples y ranking ficticio ---
+
+function computeScores(state) {
+  const conocimiento = state.knowledge.total > 0 ? Math.round((state.knowledge.correct / state.knowledge.total) * 100) : 50;
+  const gestionHidrica = Math.round(Math.min(100, (state.cooling + state.renewable) / 1.8));
+  const eficiencia = Math.round(Math.min(100, (state.efficiency / 60) * 70 + (state.renewable / 90) * 30));
+  const transparencia = Math.round(Math.min(100, state.reputation * (state.audited ? 1.1 : 1)));
+  const impacto = Math.round(state.sustainability);
+  return { conocimiento, gestionHidrica, eficiencia, transparencia, impacto };
+}
+
+const ENDING_DEFS = [
+  { id: "crisis-hidrica", emoji: "💧", title: "Crisis hídrica", color: "var(--acc-red)", bg: "var(--acc-red-bg)",
+    match: (s, sc) => sc.impacto < 30,
+    tagline: "Tu centro de datos se volvió insostenible: el consumo de agua terminó pesando más que cualquier otro resultado de la gestión." },
+  { id: "crisis-confianza", emoji: "📢", title: "Crisis de confianza", color: "var(--acc-rose)", bg: "var(--acc-rose-bg)",
+    match: (s, sc) => sc.transparencia < 30,
+    tagline: "Entre evasivas y decisiones opacas, perdiste la confianza pública. Los números ambientales ya no le importan a nadie si no confían en vos." },
+  { id: "innovador", emoji: "🏆", title: "Innovador", color: "var(--acc-purple)", bg: "var(--acc-purple-bg)",
+    match: (s, sc) => sc.eficiencia >= 70 && sc.gestionHidrica >= 70 && sc.conocimiento >= 70,
+    tagline: "Invertiste en entender el problema y en resolverlo con tecnología: tu centro de datos es un caso de estudio de cómo achicar la huella hídrica de la IA." },
+  { id: "sostenible", emoji: "🌱", title: "Centro de datos sostenible", color: "var(--acc-green)", bg: "var(--acc-green-bg)",
+    match: (s, sc) => sc.impacto >= 70 && sc.transparencia >= 60,
+    tagline: "Encontraste la forma de crecer sin pisotear el agua ni la confianza pública. No fue el camino más rápido, pero sí el más sólido." },
+  { id: "gigante", emoji: "💰", title: "Gigante tecnológico", color: "var(--acc-copper)", bg: "var(--acc-copper-bg)",
+    match: (s, sc) => s.capacity >= 1600 && sc.impacto < 60,
+    tagline: "Tu centro de datos creció rapidísimo y factura mucho, pero el costo ambiental quedó relegado a un segundo plano." },
+  { id: "equilibrio", emoji: "⚖️", title: "Equilibrio", color: "var(--acc-teal)", bg: "var(--acc-teal-bg)",
+    match: () => true,
+    tagline: "No fuiste el más sostenible ni el más rentable, pero mantuviste todo dentro de rangos razonables. Un resultado prolijo, sin extremos." },
+];
+
+function computeEnding(state, scores) {
+  return ENDING_DEFS.find(e => e.match(state, scores)) || ENDING_DEFS[ENDING_DEFS.length - 1];
+}
+
+function rankTitle(avg) {
+  if (avg >= 85) return "🥇 Investigador";
+  if (avg >= 70) return "🥈 Gestor responsable";
+  if (avg >= 55) return "🥉 Explorador";
+  if (avg >= 40) return "Aprendiz";
+  return "Debutante";
+}
+
+const LAB_PRESETS = [
+  { id: "default", label: "Por defecto", demand: 1500, tempMult: 100, efficiency: 20, renewable: 30 },
+  { id: "eficiente", label: "Muy eficiente", demand: 1500, tempMult: 100, efficiency: 55, renewable: 80 },
+  { id: "calor", label: "Ola de calor", demand: 1500, tempMult: 180, efficiency: 20, renewable: 30 },
+  { id: "demanda", label: "Demanda alta", demand: 4500, tempMult: 100, efficiency: 20, renewable: 30 },
+];
+
+function ScoreBar({ icon: Icon, color, label, value }) {
+  return (
+    <div className="hi-card" style={{ background: "var(--paper-soft)", borderRadius: 10, padding: "10px 14px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+          <Icon size={12} color={color} /> {label}
+        </span>
+        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 12.5, color }}>{value}/100</span>
+      </div>
+      <div style={{ height: 6, background: "var(--paper)", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${value}%`, height: "100%", background: color, transition: "width .3s ease" }} />
+      </div>
+    </div>
+  );
+}
+
+function computeAchievements(state) {
+  const list = [];
+  if (state.totalUnmet === 0) list.push({ label: "Cero demanda perdida", icon: Users, color: "var(--acc-blue)" });
+  if (state.sustainability >= 90) list.push({ label: "Sostenibilidad ejemplar", icon: Droplets, color: "var(--acc-teal)" });
+  if (state.reputation >= 90) list.push({ label: "Confianza pública total", icon: Award, color: "var(--acc-rose)" });
+  if (state.purchases.efficiency + state.purchases.cooling + state.purchases.renewable >= 6) list.push({ label: "Ingeniería a fondo", icon: Sliders, color: "var(--acc-mustard)" });
+  if (state.totalFines === 0) list.push({ label: "Nunca multado", icon: Wallet, color: "var(--acc-green)" });
+  if (state.budget >= state.startingBudget) list.push({ label: "Creció sin gastar de más", icon: TrendingUp, color: "var(--acc-purple)" });
+  return list;
+}
+
+// Guía paso a paso en lenguaje llano, pensada para alguien que nunca escuchó
+// hablar de la huella hídrica de la IA. No asume ningún conocimiento previo.
+const GUIDE_STEPS = [
+  {
+    icon: Gamepad2, color: "var(--acc-blue)", title: "¿Qué es este juego?",
+    body: "Vos estás a cargo de un centro de datos: el lugar físico donde viven los servidores que hacen funcionar cosas como ChatGPT o Gemini. Tu trabajo es atender las consultas de gente que usa esa IA, sin quedarte sin plata, sin gastar de más y sin perder la confianza de la gente.",
+  },
+  {
+    icon: Droplets, color: "var(--acc-orange)", title: "¿Y por qué agua? Pensé que era solo electricidad",
+    body: "Cada vez que alguien le pregunta algo a una IA, los servidores se calientan y hay que enfriarlos — muchas veces con agua. Además, generar la electricidad que esos servidores usan también gasta agua en las centrales eléctricas. Eso es lo que se llama la 'huella hídrica' de la IA: agua que no se ve, pero se gasta igual.",
+  },
+  {
+    icon: Wallet, color: "var(--dark-panel)", title: "Los números que vas a cuidar",
+    body: "💧 Agua y ⚡ Energía: cuánto gastaste en total. 💰 Presupuesto: la plata que tenés para invertir — si llega a cero, no podés hacer más mejoras. 🌱 Sostenibilidad: qué tan responsable fuiste con el ambiente. 🏆 Reputación: cuánto confía la gente en vos. Si la sostenibilidad se mantiene muy baja muchos días seguidos, te llega una multa.",
+  },
+  {
+    icon: ListChecks, color: "var(--acc-blue)", title: "Qué hacés en cada día de partida",
+    body: "Cada día llega una cantidad de consultas para atender. Vos elegís UNA sola cosa: invertir en algo (por ejemplo, mejorar el enfriamiento o sumar energía renovable) o ahorrar ese día sin gastar nada. Ojo: comprar la misma mejora muchas veces la va poniendo cada vez más cara.",
+  },
+  {
+    icon: Users, color: "var(--acc-orange)", title: "Te vas a cruzar con personajes y sorpresas",
+    body: "Una científica, un CEO, vecinos, un ingeniero, un funcionario y una periodista te van a plantear decisiones en el camino. También aparecen preguntas cortas de 'Mito, Dato o Depende' y casos donde tenés que elegir qué fuente de información es confiable. Todo esto suma o resta a tus números — no hace falta saber la respuesta de antemano, se explica en el momento.",
+  },
+  {
+    icon: Award, color: "var(--dark-panel)", title: "Cómo termina la partida",
+    body: "La partida está dividida en 6 'misiones' con nombre propio que te van guiando. Al final, según cómo jugaste, te toca uno de 6 finales posibles (desde 'Centro de datos sostenible' hasta 'Crisis hídrica') y un ranking con 5 puntajes distintos, no solo un número único.",
+  },
+  {
+    icon: Info, color: "var(--acc-blue)", title: "Para arrancar",
+    body: "No hace falta entender todo de una: elegí una zona, después la dificultad 'Fácil', y andá probando. Cada botón te avisa qué efecto va a tener antes de que lo elijas, así que podés leer y decidir con calma en cada día.",
+  },
+];
+
+function HowToPlayGuide({ onDone }) {
+  const [step, setStep] = useState(0);
+  const current = GUIDE_STEPS[step];
+  const Icon = current.icon;
+  const isLast = step === GUIDE_STEPS.length - 1;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: `4px solid ${current.color}` }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+        {GUIDE_STEPS.map((_, i) => (
+          <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? current.color : "var(--paper-soft)", transition: "background .2s" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Icon size={18} color={current.color} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)" }}>Paso {step + 1} de {GUIDE_STEPS.length}</span>
+      </div>
+      <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: current.color, marginBottom: 10 }}>{current.title}</div>
+      <p style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.7, margin: "0 0 20px" }}>{current.body}</p>
+      <div style={{ display: "flex", gap: 8 }}>
+        {step > 0 && (
+          <button onClick={() => setStep(s => s - 1)} className="hi-btn" style={ghostBtn}>Anterior</button>
+        )}
+        <button
+          onClick={() => isLast ? onDone() : setStep(s => s + 1)}
+          className="hi-btn"
+          style={{ ...primaryBtn, flex: 1, justifyContent: "center", background: current.color, color: "var(--on-accent)" }}
+        >
+          {isLast ? "Entendido, vamos a jugar" : "Siguiente"}
+        </button>
+      </div>
+      {!isLast && (
+        <button onClick={onDone} className="hi-btn" style={{ ...ghostBtn, marginTop: 8, width: "100%", justifyContent: "center" }}>
+          Saltar la guía
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Textos de ayuda que se abren con los botones de información (ⓘ) del juego.
+// Cada entrada tiene un título, uno o más párrafos y, opcionalmente, una nota
+// con el dato real o la salvedad metodológica.
+const INFO_TEXTS = {
+  cooling: {
+    title: "Enfriamiento eficiente",
+    body: [
+      "Los servidores generan calor y hay que enfriarlos. Muchos centros de datos lo hacen evaporando agua en torres de refrigeración; otros usan aire, circuitos cerrados de líquido u otras tecnologías.",
+      "Cada mejora suma +15% de eficiencia de enfriamiento y baja el agua directa que gastás por consulta. Si repetís la compra, cada vez sale más cara.",
+    ],
+    note: "El agua directa es la que se consume en el propio centro de datos. Google midió unos 0,26 mL por consulta mediana de Gemini (2025); otras empresas y estudios reportan cifras distintas.",
+  },
+  renewable: {
+    title: "Energía renovable",
+    body: [
+      "Generar electricidad también consume agua, sobre todo en centrales térmicas que se refrigeran con agua. Ese gasto no se ve en el centro de datos: es el agua indirecta.",
+      "Cada mejora suma +15% de energía renovable y reduce el agua indirecta por consulta.",
+    ],
+    note: "No todas las renovables son iguales: la eólica y la solar fotovoltaica usan muy poca agua al operar, mientras que una represa hidroeléctrica puede perder agua por evaporación de su embalse.",
+  },
+  capacity: {
+    title: "Ampliar capacidad",
+    body: [
+      "La capacidad es la cantidad de consultas por día que puede atender tu centro de datos. Si llegan más de las que podés atender, las que sobran se pierden y tu reputación baja.",
+      "Cada ampliación suma +400 consultas por día. Pero más servidores también tienen su huella: fabricarlos exige agua y energía, y el juego lo cuenta como agua de infraestructura.",
+    ],
+    note: "La huella hídrica de fabricar chips y servidores es real (minería, semiconductores, ensamblaje), pero en el juego es una cifra ilustrativa, no una medición precisa.",
+  },
+  efficiency: {
+    title: "Optimizar modelos",
+    body: [
+      "No todos los modelos de IA gastan lo mismo. Con modelos más chicos u optimizados se puede responder lo mismo usando menos electricidad.",
+      "Cada mejora baja 10% la electricidad por consulta y, como la electricidad tiene agua escondida, también baja el agua indirecta.",
+    ],
+    note: "El consumo por consulta varía muchísimo según el modelo y la tarea: generar una imagen suele gastar bastante más que responder un texto.",
+  },
+  audit: {
+    title: "Auditoría y transparencia",
+    body: [
+      "Una auditoría independiente revisa y publica cuánta agua y energía usás, y cómo lo medís. Se puede hacer una sola vez por partida.",
+      "Suma +8 de reputación al instante. Y si más adelante la prensa te pregunta por tu consumo, responder con transparencia rinde más si ya te auditaste.",
+    ],
+    note: "La falta de transparencia es parte del problema real: muchas empresas no publican datos de agua, o publican solo el agua directa y dejan afuera la indirecta, por eso las cifras no siempre se pueden comparar.",
+  },
+  diff_facil: {
+    title: "Dificultad Fácil",
+    body: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+  },
+  diff_normal: {
+    title: "Dificultad Normal",
+    body: ["5 inversiones distintas", "6 misiones con premio", "Personajes que te piden decisiones", "Preguntas Mito / Dato / Depende"],
+  },
+  diff_dificil: {
+    title: "Dificultad Difícil",
+    body: ["6 inversiones, con plan de contingencia", "3 objetivos de la dirección con seguimiento en vivo", "Panel de datos: agua por consulta y por tipo", "Crisis más seguidas y reputación más frágil"],
+  },
+  resilience: {
+    title: "Plan de contingencia",
+    body: [
+      "Una ola de calor, una sequía o un recorte de agua municipal pueden dispararte el gasto de agua de un día para el otro. Un plan de contingencia (reservas, protocolos, refrigeración de respaldo) amortigua ese golpe.",
+      "Cada plan reduce 15% el efecto de esas crisis, hasta un máximo de 50%. Solo disponible en dificultad Difícil.",
+    ],
+  },
+  save: {
+    title: "Pasar el día y ahorrar",
+    body: [
+      "No invertís nada y guardás el presupuesto. Igual se atienden las consultas del día con lo que ya tenés y cobrás por ellas.",
+      "Sirve cuando no te alcanza para una mejora importante, o cuando preferís juntar plata para algo más caro más adelante.",
+    ],
+  },
+  demand: {
+    title: "Consultas y capacidad",
+    body: [
+      "Cada día llega una cantidad de consultas de IA: esa es la demanda. Tu capacidad es cuántas podés atender.",
+      "Si la demanda supera la capacidad, las consultas que sobran se pierden y bajan tu reputación. Con los días la demanda va creciendo, y algunos eventos la cambian (por ejemplo, un pico viral o un mantenimiento que reduce tu capacidad).",
+    ],
+  },
+  stats: {
+    title: "Tus números hasta ahora",
+    body: [
+      "Agua acumulada: los litros que gastó tu centro de datos en la partida. Suma el agua directa (refrigeración), la indirecta (la de generar la electricidad) y la de fabricar la infraestructura.",
+      "Energía acumulada: la electricidad que consumieron los servidores al atender consultas.",
+      "Presupuesto: la plata que tenés. Cobrás por cada consulta atendida y gastás cuando invertís.",
+    ],
+  },
+  sostenibilidad: {
+    title: "Sostenibilidad",
+    body: [
+      "Mide qué tan liviana es tu huella de agua por consulta. Si gastás poco por consulta, sube; si gastás mucho, baja.",
+      "Si cae por debajo de 35 durante dos días seguidos, te multan.",
+    ],
+  },
+  reputacion: {
+    title: "Reputación",
+    body: [
+      "Es la confianza pública en tu empresa. Sube con auditorías y decisiones transparentes, y baja si dejás consultas sin atender o respondés mal a la prensa y a la comunidad.",
+      "Una reputación alta también hace que cobres más por cada consulta atendida.",
+    ],
+  },
+  sources: {
+    title: "Cómo reconocer una fuente confiable",
+    body: [
+      "Una fuente confiable explica cómo midió (la metodología), dice quién la firma y cuándo se publicó, y se puede verificar.",
+      "Desconfiá de los números sin origen, de las cadenas reenviadas y de las cifras muy llamativas sin contexto: suelen mezclar cosas distintas, como entrenar un modelo y usarlo.",
+    ],
+    note: "Aun las fuentes confiables miden cosas distintas (otro modelo, otro país, otra época). Por eso conviene preguntarse siempre: ¿qué se midió, dónde y cómo?",
+  },
+  zone_seca: {
+    title: "Zona muy seca",
+    body: [
+      "En regiones áridas el agua es un recurso escaso y un centro de datos puede competir por ella con la población y la agricultura. En el juego, el agua directa pesa más.",
+      "A cambio, suele haber mucho sol: por eso arrancás con más energía renovable y el agua indirecta pesa menos.",
+    ],
+  },
+  zone_humeda: {
+    title: "Zona con agua abundante",
+    body: [
+      "Cerca de un río caudaloso hay agua para refrigerar, así que el agua directa pesa menos. Pero el terreno y la logística pueden ser más caros: arrancás con menos presupuesto.",
+      "Que el agua abunde no significa que sea gratis para el ambiente: igual compite con otros usos.",
+    ],
+  },
+  zone_fria: {
+    title: "Zona de clima frío",
+    body: [
+      "El aire frío ayuda a refrigerar los servidores sin gastar tanta agua, por eso arrancás con parte del enfriamiento resuelto y el agua directa pesa menos.",
+      "Es la opción más equilibrada para empezar: no tiene grandes desventajas.",
+    ],
+  },
+};
+
+function InfoButton({ onClick, label = "Más información", dark = false, style }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(e.currentTarget); }}
+      aria-label={label}
+      title={label}
+      className="hi-btn"
+      style={{
+        width: 32, height: 32, borderRadius: "50%", padding: 0, cursor: "pointer", flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: dark ? "1px solid rgba(255,255,255,0.35)" : "1px solid var(--line)",
+        background: dark ? "rgba(255,255,255,0.1)" : "var(--paper)",
+        color: dark ? "#FFFFFF" : "var(--ink-soft)",
+        ...style,
+      }}
+    >
+      <Info size={15} />
+    </button>
+  );
+}
+
+// Globo de ayuda anclado al botón (ⓘ) que lo abrió: aparece justo debajo o
+// arriba del botón según el espacio disponible, y se mantiene dentro de la
+// pantalla. Si no hay botón de referencia, se centra.
+function InfoModal({ info, anchor, onClose, onGuide }) {
+  const data = INFO_TEXTS[info];
+  const popRef = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const place = () => {
+      const pop = popRef.current;
+      if (!pop) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const margin = 12;
+      const width = Math.min(340, vw - margin * 2);
+      const popH = pop.offsetHeight;
+      const r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+      if (!r) {
+        setPos({ left: (vw - width) / 2, top: Math.max(margin, (vh - popH) / 2), width, arrow: null });
+        return;
+      }
+      const cx = r.left + r.width / 2;
+      const left = Math.min(Math.max(cx - width / 2, margin), vw - width - margin);
+      const spaceBelow = vh - r.bottom - margin;
+      const spaceAbove = r.top - margin;
+      const below = popH + 8 <= spaceBelow || spaceBelow >= spaceAbove;
+      let top = below ? r.bottom + 8 : r.top - 8 - popH;
+      top = Math.max(margin, Math.min(top, vh - popH - margin));
+      const clear = below ? top >= r.bottom + 2 : top + popH <= r.top - 2;
+      const arrowX = Math.min(Math.max(cx - left, 18), width - 18);
+      setPos({ left, top, width, arrow: clear ? { x: arrowX, below } : null });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [info, anchor]);
+
+  if (!data) return null;
+  const arrowBorders = pos && pos.arrow && pos.arrow.below
+    ? { borderRight: "none", borderBottom: "none" }
+    : { borderLeft: "none", borderTop: "none" };
+  // Se dibuja en document.body (portal) para que el posicionamiento fijo sea
+  // respecto de la pantalla y no de un contenedor con animación/transform.
+  return createPortal(
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={data.title}
+      style={{ position: "fixed", inset: 0, background: "rgba(20,24,31,0.18)", zIndex: 100 }}
+    >
+      <div
+        ref={popRef}
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: "fixed", left: pos ? pos.left : 0, top: pos ? pos.top : 0, fontFamily: "var(--font-body)",
+          width: pos ? pos.width : Math.min(340, window.innerWidth - 24),
+          visibility: pos ? "visible" : "hidden",
+        }}
+      >
+        <div style={{
+          background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 14, padding: "16px 16px 14px",
+          maxHeight: "calc(100vh - 24px)", overflowY: "auto", position: "relative",
+          boxShadow: "0 12px 32px rgba(20,24,31,0.22)",
+        }}>
+          <button onClick={onClose} aria-label="Cerrar" style={{
+            position: "absolute", top: 10, right: 10, background: "var(--paper-soft)", border: "none",
+            borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+          }}>
+            <X size={14} color="var(--ink-soft)" />
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10, paddingRight: 30 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 9, background: "var(--acc-blue-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Info size={16} color="var(--acc-blue)" />
+            </div>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", lineHeight: 1.25 }}>{data.title}</div>
+          </div>
+
+          {data.body.map((p, i) => (
+            <p key={i} style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 0 9px" }}>{p}</p>
+          ))}
+
+          {data.note && (
+            <div style={{ background: "var(--paper-soft)", borderLeft: "3px solid var(--acc-blue)", borderRadius: 6, padding: "9px 11px", margin: "4px 0 12px" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--acc-blue)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>Para tener en cuenta</div>
+              <p style={{ fontSize: 11.5, color: "var(--ink-soft)", lineHeight: 1.55, margin: 0 }}>{data.note}</p>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: data.note ? 0 : 6 }}>
+            <button onClick={onGuide} className="hi-btn" style={{ ...ghostBtn, flex: "1 1 140px", justifyContent: "center" }}>
+              📖 Ver la guía paso a paso
+            </button>
+            <button onClick={onClose} className="hi-btn" style={{ ...primaryBtn, fontFamily: "var(--font-body)", flex: "1 1 100px", justifyContent: "center", background: "var(--acc-blue)", color: "#FFFFFF" }}>
+              Entendido
+            </button>
+          </div>
+        </div>
+        {pos && pos.arrow && (
+          <div aria-hidden="true" style={{
+            position: "absolute", left: pos.arrow.x - 7, [pos.arrow.below ? "top" : "bottom"]: -7,
+            width: 14, height: 14, background: "var(--paper)", transform: "rotate(45deg)",
+            border: "1px solid var(--line)", ...arrowBorders,
+          }} />
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// --- Gota: la mascota. Cambia de cara según cómo viene el agua de la partida ---
+function gotaMood(sustainability) {
+  if (sustainability >= 60) return "happy";
+  if (sustainability >= 45) return "ok";
+  if (sustainability >= 30) return "worried";
+  return "sad";
+}
+
+function GotaMascot({ mood = "ok", size = 56, react }) {
+  const body = { happy: "var(--acc-blue)", ok: "var(--acc-blue)", worried: "#E0A33A", sad: "var(--acc-red)" }[mood];
+  const mouth = { happy: "M44 92 Q60 110 76 92", ok: "M47 98 Q60 103 73 98", worried: "M46 104 Q60 92 74 104", sad: "M44 108 Q60 90 76 108" }[mood];
+  return (
+    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 120 144" className={react === "good" ? "hi-jump" : react === "bad" ? "hi-shake" : mood === "happy" ? "hi-bob" : "hi-wobble"} aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z" fill={body} stroke="var(--ink)" strokeWidth="4" />
+      <path d="M30 100 C30 88, 36 78, 44 68" stroke="rgba(255,255,255,0.5)" strokeWidth="7" strokeLinecap="round" fill="none" />
+      <circle cx="44" cy="80" r="9" fill="#FFFFFF" /><circle cx="76" cy="80" r="9" fill="#FFFFFF" />
+      <circle cx="46" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" /><circle cx="74" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" />
+      {mood === "worried" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 62 L52 68" /><path d="M86 62 L68 68" /></g>}
+      {mood === "sad" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 68 L52 62" /><path d="M86 68 L68 62" /></g>}
+      {mood === "happy" && <g fill="#FFB4A8" opacity="0.8"><circle cx="30" cy="96" r="6" /><circle cx="90" cy="96" r="6" /></g>}
+      <path d={mouth} stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+function gotaSays(state) {
+  const r = state.dayResult;
+  if (r) {
+    if (r.blocked) return "No te alcanzó el presupuesto para eso. ¡Mañana probamos otra cosa!";
+    if (r.unmet > 0) return "Quedaron consultas sin atender. Más servidores ayudan.";
+    if (r.sustainDelta > 0) return "¡Muy bien! Hoy cuidaste el agua.";
+    if (r.sustainDelta < 0) return "Hoy se gastó bastante agua. Probá enfriar mejor o usar energía limpia.";
+    return "Día tranquilo. ¡Seguimos!";
+  }
+  if (state.event && state.event.kind === "modifier" && state.event.id !== "calm") return `${state.event.emoji} ${state.event.label}: ${state.event.desc}`;
+  if (state.day === 1) return "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño.";
+  return "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
+}
+
+const EASY_TIPS = [
+  "El agua de la IA no se gasta solo enfriando servidores: también se gasta para generar la electricidad que usan.",
+  "Un centro de datos en un lugar frío necesita menos agua para enfriarse.",
+  "La energía solar y la eólica usan muy poca agua para producir electricidad.",
+  "Cuando mucha gente usa IA a la vez, hace falta más capacidad y más energía.",
+  "Google midió unos 0,26 mL de agua directa por consulta mediana de Gemini (2025).",
+  "Fabricar los servidores también gasta agua: es el agua de infraestructura.",
+  "Pedirle una imagen a una IA suele gastar más energía que pedirle un texto.",
+  "Muchas empresas no publican cuánta agua usan, por eso es difícil comparar sus cifras.",
+];
+
+// Barra única de "agua cuidada" para la dificultad Fácil (reemplaza los dos medidores).
+function CareBar({ value, label }) {
+  const animated = useAnimatedNumber(value);
+  const color = value >= 60 ? "var(--acc-green)" : value >= 45 ? "var(--acc-teal)" : value >= 30 ? "var(--acc-mustard)" : "var(--acc-red)";
+  const msg = value >= 60 ? "¡Vas muy bien!" : value >= 45 ? "Vas bien, pero ojo con el agua." : value >= 30 ? "El agua está en riesgo." : "¡Hay que cuidar el agua ya!";
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--ink)" }}>{label}</span>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color }}>{Math.round(animated)}%</span>
+      </div>
+      <div style={{ height: 14, borderRadius: 7, background: "var(--paper-soft)", border: "1px solid var(--line)", overflow: "hidden" }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label={label}>
+        <div style={{ width: `${Math.max(0, Math.min(100, animated))}%`, height: "100%", background: color, transition: "width .5s ease" }} />
+      </div>
+      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 6 }}>{msg}</div>
+    </div>
+  );
+}
+
+// Meta única de la dificultad Fácil.
+function GoalStrip({ state }) {
+  const ok = state.sustainability >= 50 && state.budget > 0;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px dashed var(--ink)", borderRadius: 10, padding: "12px 14px", marginTop: 12 }}>
+      <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5 }}>
+        🎯 <strong>Tu meta:</strong> llegar al día {state.diff.days} con el agua cuidada en <span className="mk mk-blue">50% o más</span> y con plata en el presupuesto.
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: ok ? "var(--acc-green)" : "var(--acc-mustard)" }}>
+        {ok ? "✓ Ahora mismo vas cumpliendo." : "Todavía no: mirá la barra de agua cuidada."}
+      </div>
+    </div>
+  );
+}
+
+// Objetivos de la dirección (solo dificultad Difícil): medibles, con seguimiento.
+const HARD_OBJECTIVES = [
+  { id: "h1", label: "Agua operativa por consulta de 0,35 mL o menos (promedio)",
+    value: (s) => s.totalServed > 0 ? ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed : 0,
+    fmt: (v) => `${numFmt(v, 2)} mL`, ok: (s) => s.totalServed === 0 || ((s.totalDirectWaterL + s.totalIndirectWaterL) * 1000) / s.totalServed <= 0.35 },
+  { id: "h2", label: "Reputación de 65 o más al cierre",
+    value: (s) => s.reputation, fmt: (v) => `${Math.round(v)}`, ok: (s) => s.reputation >= 65 },
+  { id: "h3", label: "Menos de 5% de consultas sin atender",
+    value: (s) => (100 * s.totalUnmet) / Math.max(1, s.totalServed + s.totalUnmet),
+    fmt: (v) => `${numFmt(v, 1)}%`, ok: (s) => s.totalUnmet / Math.max(1, s.totalServed + s.totalUnmet) < 0.05 },
+];
+
+function ObjectivesPanel({ state, final }) {
+  const met = HARD_OBJECTIVES.filter(o => o.ok(state)).length;
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>Objetivos de la dirección</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)" }}>{final ? `${met} de ${HARD_OBJECTIVES.length} cumplidos` : "se evalúan al cierre"}</span>
+      </div>
+      {HARD_OBJECTIVES.map((o, i) => {
+        const ok = o.ok(state);
+        return (
+          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: i ? "1px solid var(--line)" : "none" }}>
+            {ok ? <CheckCircle2 size={15} color="var(--acc-green)" style={{ flexShrink: 0 }} /> : <XCircle size={15} color={final ? "var(--acc-red)" : "var(--acc-mustard)"} style={{ flexShrink: 0 }} />}
+            <span style={{ flex: 1, fontSize: 12, color: "var(--ink)" }}>{o.label}</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: ok ? "var(--acc-green)" : "var(--acc-mustard)" }}>{o.fmt(o.value(state))}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Panel de datos (solo dificultad Difícil): agua por consulta, por tipo y por día.
+function DataPanel({ state, defaultOpen }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const h = state.history;
+  const last = h.length ? h[h.length - 1] : null;
+  const parts = [
+    { name: "Directa", v: state.totalDirectWaterL, c: "var(--acc-teal)" },
+    { name: "Indirecta", v: state.totalIndirectWaterL, c: "var(--acc-blue)" },
+    { name: "Infraestructura", v: state.totalInfraWaterL, c: "var(--acc-graphite)" },
+  ];
+  const total = Math.max(0.0001, parts.reduce((a, p) => a + p.v, 0));
+  const maxDay = Math.max(0.0001, ...h.map(x => x.waterTotalL));
+  return (
+    <div className="hi-card" style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} className="hi-btn" style={{ background: "none", border: "none", padding: 0, width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>Panel de datos</span>
+        <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+      </button>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "var(--ink-soft)" }}>
+            <span>Última jornada: <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{last ? `${numFmt((last.waterTotalL * 1000) / Math.max(1, last.served), 2)} mL` : "—"}</strong> por consulta</span>
+            <span>Electricidad: <strong style={{ color: "var(--ink)", fontFamily: "var(--font-mono)" }}>{last ? formatEnergy(last.kWh * 1000) : "—"}</strong></span>
+          </div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>De dónde sale el agua</div>
+          <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden", border: "1px solid var(--line)" }}>
+            {parts.map(p => <div key={p.name} style={{ width: `${(p.v / total) * 100}%`, background: p.c, transition: "width .5s ease" }} />)}
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6, fontSize: 11, color: "var(--ink-soft)" }}>
+            {parts.map(p => <span key={p.name} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: p.c }} />{p.name} {numFmt((p.v / total) * 100, 0)}%</span>)}
+          </div>
+          {h.length > 0 && (
+            <>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 4px" }}>Agua por día</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 44 }}>
+                {h.map(x => <div key={x.day} title={`Día ${x.day}: ${numFmt(x.waterTotalL, 2)} L`} style={{ flex: 1, minWidth: 3, height: `${Math.max(6, (x.waterTotalL / maxDay) * 100)}%`, background: "var(--logo-cyan)", border: "1px solid var(--acc-blue)", borderRadius: "2px 2px 0 0" }} />)}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Juego({ onActiveChange }) {
+  const [zone, setZone] = useState(null);
+  const [diffKey, setDiffKey] = useState(null);
+  const [state, setState] = useState(null);
+  const [chosen, setChosen] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [showZoneNumbers, setShowZoneNumbers] = useState(false);
+  const [info, setInfo] = useState(null);
+
+  // El agua acumulada de la partida sube por la pantalla.
+  const waterL = state ? state.totalWaterL : 0;
+  useEffect(() => {
+    const lv = Math.min(0.35, 0.35 * (1 - Math.exp(-waterL / 15)));
+    document.documentElement.style.setProperty("--water-lv", String(lv));
+  }, [waterL]);
+  useEffect(() => () => document.documentElement.style.setProperty("--water-lv", "0"), []);
+
+  // Hay "partida en curso" desde que arranca hasta que se muestra el resultado final.
+  const inProgress = !!state && !state.finished;
+  useEffect(() => {
+    if (onActiveChange) onActiveChange(inProgress);
+    return () => { if (onActiveChange) onActiveChange(false); };
+  }, [inProgress, onActiveChange]);
+  const [showGuide, setShowGuide] = useState(false);
+
+  const startGame = (key) => {
+    const fresh = freshGameState(key, zone);
+    let event = pickEvent(fresh.diff);
+    if (event.kind === "sources") {
+      const scenario = pickSourceScenario([]);
+      event = { ...event, scenario };
+      fresh.usedSourceIds = [scenario.id];
+    }
+    fresh.event = event;
+    fresh.eventChoiceResolved = event.kind !== "choice" && event.kind !== "sources";
+    fresh.demand = rollDemand(1, fresh.diff, event);
+    setDiffKey(key);
+    setState(fresh);
+    setChosen(null);
+  };
+
+  const resolveEventChoice = (optionId) => {
+    setState(s => {
+      const option = s.event.options.find(o => o.id === optionId);
+      if (!option) return s;
+      const { patch, note } = option.resolve(s);
+      return { ...s, ...patch, eventChoiceResolved: true, eventChoiceNote: note };
+    });
+  };
+
+  const resolveSourceChoice = (sourceId) => {
+    setState(s => {
+      const scenario = s.event.scenario;
+      if (!scenario) return s;
+      const source = scenario.sources.find(src => src.id === sourceId);
+      if (!source) return s;
+      const reliableSource = scenario.sources.find(src => src.reliable);
+      let reputation = s.reputation;
+      let knowledge = s.knowledge;
+      let note;
+      if (source.reliable) {
+        reputation = Math.min(100, reputation + 8);
+        knowledge = { correct: knowledge.correct + 1, total: knowledge.total + 1 };
+        note = `Elegiste bien: "${source.label}" es la fuente confiable. ${source.detail} +8 de reputación.`;
+      } else {
+        reputation = Math.max(0, reputation - 5);
+        knowledge = { correct: knowledge.correct, total: knowledge.total + 1 };
+        note = `"${source.label}" no es confiable: ${source.detail} La fuente correcta era "${reliableSource.label}". -5 de reputación.`;
+      }
+      return { ...s, reputation, knowledge, eventChoiceResolved: true, eventChoiceNote: note };
+    });
+  };
+
+  if (showGuide) {
+    return <HowToPlayGuide onDone={() => setShowGuide(false)} />;
+  }
+
+  if (!zone) {
+    return (
+      <div>
+        <DataCenterHero />
+        <div style={{ background: "var(--dark-panel)", borderRadius: 16, padding: 20, marginBottom: 12, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.5) 1.2px, transparent 1.2px)", backgroundSize: "20px 20px", opacity: 0.08, pointerEvents: "none" }} />
+          <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Gamepad2 size={17} color="#FFFFFF" />
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}>SequIA</div>
+            </div>
+            <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", margin: "0 0 12px" }}>
+              Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta, y todas se pueden ganar.
+            </p>
+            <button onClick={() => setShowGuide(true)} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", background: "var(--acc-orange)", color: "#FFFFFF" }}>
+              📖 ¿Primera vez? Ver la guía paso a paso
+            </button>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setZone(ZONES[Math.floor(Math.random() * ZONES.length)])}
+          className="hi-btn hi-lift"
+          style={{
+            width: "100%", textAlign: "left", padding: "14px 16px", borderRadius: 8, cursor: "pointer",
+            border: "1px dashed var(--acc-blue)", background: "var(--acc-blue-bg)", marginBottom: 8,
+            display: "flex", alignItems: "center", gap: 10,
+          }}
+        >
+          <Shuffle size={18} color="var(--acc-blue)" style={{ flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--acc-blue)" }}>Elegir al azar</div>
+            <div style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>Si no te querés poner a pensar, dejá que decida la suerte</div>
+          </div>
+        </button>
+
+        {ZONES.map(z => (
+          <div key={z.id} style={{ position: "relative", marginBottom: 8 }}>
+          <button
+            onClick={() => setZone(z)}
+            className="hi-btn hi-lift"
+            style={{
+              width: "100%", textAlign: "left", padding: "14px 16px", borderRadius: 8, cursor: "pointer",
+              border: "1px solid rgba(255,255,255,0.12)", background: "var(--dark-panel)", marginBottom: 0,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>{z.emoji} {z.label}</div>
+              <ArrowRightIcon color="#FFFFFF" />
+            </div>
+            <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.7)", margin: showZoneNumbers ? "0 0 10px" : 0, lineHeight: 1.5 }}>{z.desc}</p>
+            {showZoneNumbers && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 6 }}>
+              {zoneEffectChips(z).map(chip => {
+                const ChipIcon = chip.icon;
+                return (
+                  <div key={chip.label} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "5px 8px" }}>
+                    <ChipIcon size={12} color={chip.tone} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.65)", flex: 1 }}>{chip.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: chip.tone, fontFamily: "var(--font-mono)" }}>{chip.value}</span>
+                  </div>
+                );
+              })}
+            </div>}
+          </button>
+          <InfoButton dark onClick={(el) => setInfo({ key: "zone_" + z.id, anchor: el })} label={`Más información sobre ${z.label}`} style={{ position: "absolute", top: 12, right: 42 }} />
+          </div>
+        ))}
+
+        <button onClick={() => setShowZoneNumbers(v => !v)} aria-expanded={showZoneNumbers} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginTop: 4 }}>
+          {showZoneNumbers ? "Ocultar los números de cada zona" : "Ver los números de cada zona"}
+        </button>
+        {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <div>
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Gamepad2 size={17} color="var(--acc-blue)" />
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
+          </div>
+          <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>
+            {zone.emoji} Construyendo en {zone.label.replace(/^Zona [A-C] — /, "")}. Elegí cuánto juego querés: cuanto más difícil, más información y más objetivos.
+          </p>
+        </div>
+
+        {Object.entries(GAME_DIFFICULTIES).map(([key, d]) => (
+          <div key={key} style={{ position: "relative", marginBottom: 14 }}>
+            <button
+              onClick={() => startGame(key)}
+              className="hi-btn hi-ink-rest"
+              style={{ width: "100%", textAlign: "left", padding: "14px 52px 14px 16px", borderRadius: 10, cursor: "pointer", background: "var(--paper)", display: "block" }}
+            >
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>{d.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--acc-blue)", marginTop: 2 }}>{d.tagline}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-soft)" }}>{d.days} días · ${numFmt(Math.round(d.budget * zone.budgetMult), 0)}</span>
+                <span style={{ display: "flex", gap: 4 }} aria-label={`Complejidad ${d.tier} de 3`}>
+                  {[1, 2, 3].map(i => <span key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: i <= d.tier ? "var(--acc-orange)" : "var(--line)" }} />)}
+                </span>
+              </div>
+            </button>
+            <InfoButton onClick={(el) => setInfo({ key: "diff_" + key, anchor: el })} label={`Qué incluye la dificultad ${d.label}`} style={{ position: "absolute", top: 14, right: 14 }} />
+          </div>
+        ))}
+
+        <button onClick={() => setZone(null)} className="hi-btn" style={{ ...ghostBtn, marginTop: 4, marginRight: 8 }}>
+          <RotateCcw size={13} /> Cambiar zona
+        </button>
+        <button onClick={() => setShowGuide(true)} className="hi-btn" style={{ ...ghostBtn, marginTop: 4, marginRight: 8 }}>
+          📖 Ver guía paso a paso
+        </button>
+        <button onClick={() => setShowHelp(h => !h)} className="hi-btn" aria-expanded={showHelp} style={{ ...ghostBtn, marginTop: 4 }}>
+          <Info size={13} /> {showHelp ? "Ocultar" : "Resumen rápido"}
+        </button>
+        {showHelp && (
+          <div className="hi-card" style={{ background: "var(--paper-soft)", borderRadius: 8, padding: 14, marginTop: 8, fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6 }}>
+            Ya elegiste la zona y la dificultad. Cada día llega una demanda de consultas: elegís una inversión (enfriamiento, renovables, más capacidad, eficiencia de modelos o auditoría) o ahorrás.
+            Comprar la misma mejora varias veces la hace más cara. Tu <strong>sostenibilidad</strong> sube o baja según cuánta agua gastás por consulta atendida,
+            y tu <strong>reputación</strong> según la demanda que dejás sin atender y las decisiones que tomás. En el camino te vas a cruzar con <strong>personajes</strong> que te plantean decisiones,
+            preguntas de <strong>Mito/Dato/Depende</strong> y casos donde tenés que elegir la fuente confiable. Las <strong>misiones</strong> marcan el rumbo de la partida, y si la sostenibilidad
+            queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en uno de 6 finales posibles y un ranking de 5 categorías.
+          </div>
+        )}
+        {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
+      </div>
+    );
+  }
+
+  const diff = state.diff;
+  const easy = diff.tier === 1;
+  const mood = gotaMood(state.sustainability);
+  const gotaReact = state.dayResult ? (state.dayResult.sustainDelta > 0 && state.dayResult.unmet === 0 ? "good" : (state.dayResult.sustainDelta < 0 || state.dayResult.unmet > 0 ? "bad" : null)) : null;
+  const visibleActions = GAME_ACTION_DEFS.filter(a => a.id !== "save" && diff.actions.includes(a.id));
+
+  const resolveDay = () => {
+    if (!chosen) return;
+    const actionDef = GAME_ACTION_DEFS.find(a => a.id === chosen);
+    const cost = costFor(actionDef, state);
+    const canAfford = state.budget >= cost;
+    const event = state.event;
+    const resistFactor = state.resilience > 0 && event.resistible ? Math.max(0.5, 1 - state.resilience * 0.15) : 1;
+
+    let { budget, capacity, cooling, renewable, efficiency, resilience, audited, reputation, purchases } = state;
+    purchases = { ...purchases };
+    let infraWaterAdded = 0;
+    if (canAfford) {
+      budget -= cost;
+      if (actionDef.id === "cooling") { cooling = Math.min(90, cooling + 15); purchases.cooling++; }
+      if (actionDef.id === "renewable") { renewable = Math.min(90, renewable + 15); purchases.renewable++; }
+      if (actionDef.id === "capacity") { capacity += 400; purchases.capacity++; infraWaterAdded = 400 * INFRA_WATER_L_PER_CAPACITY_UNIT; }
+      if (actionDef.id === "efficiency") { efficiency = Math.min(60, efficiency + 10); purchases.efficiency++; }
+      if (actionDef.id === "resilience") { resilience = resilience + 1; purchases.resilience++; }
+      if (actionDef.id === "audit") { audited = true; reputation = Math.min(100, reputation + 8); }
+    }
+
+    const effectiveCapacity = Math.round(capacity * (event.kind === "modifier" ? event.capacityMult : 1));
+    const eventRenewableBonus = event.kind === "modifier" ? event.renewableBonus : 0;
+    const effectiveRenewable = Math.min(95, renewable + eventRenewableBonus);
+    const demand = state.demand;
+    const served = Math.min(demand, effectiveCapacity);
+    const unmet = Math.max(0, demand - effectiveCapacity);
+
+    const whPerQuery = GOOGLE_ELECTRICITY_WH * (1 - efficiency / 100);
+    const kWh = (served * whPerQuery) / 1000;
+    const waterDirectMultRaw = event.kind === "modifier" ? event.waterDirectMult : 1;
+    const waterDirectMult = (1 + (waterDirectMultRaw - 1) * resistFactor) * state.zone.waterDirectMult;
+    const waterIndirectMultRaw = event.kind === "modifier" ? event.waterIndirectMult : 1;
+    const waterIndirectMult = (1 + (waterIndirectMultRaw - 1) * resistFactor) * state.zone.waterIndirectMult;
+    const waterDirectMl = served * GOOGLE_DIRECT_WATER_ML * (1 - cooling / 100) * waterDirectMult;
+    const waterIndirectL = kWh * GRID_WATER_INTENSITY_L_PER_KWH * (1 - effectiveRenewable / 100) * waterIndirectMult;
+    const waterTotalL = waterIndirectL + waterDirectMl / 1000 + infraWaterAdded;
+
+    const repMultiplier = 0.7 + (reputation / 100) * 0.6;
+    const revenue = served * 0.13 * repMultiplier;
+
+    const waterPerQueryMl = served > 0 ? (waterTotalL * 1000) / served : 0;
+    let sustainDelta = 0;
+    if (served > 0) {
+      sustainDelta += waterPerQueryMl <= diff.threshold ? 2 : -Math.min(10, Math.round((waterPerQueryMl - diff.threshold) * WATER_PENALTY_SLOPE * diff.severity));
+    }
+    let repDelta = 0;
+    if (unmet > 0) repDelta -= Math.round(Math.min(8 * diff.repPenalty, (unmet / 200) * diff.repPenalty));
+    if (event.id === "goodpress") repDelta += event.reputationBonus;
+
+    const newSustainability = Math.max(0, Math.min(100, state.sustainability + sustainDelta));
+    const newReputation = Math.max(0, Math.min(100, reputation + repDelta));
+    budget += revenue;
+
+    const lowSustainStreak = newSustainability < 35 ? state.lowSustainStreak + 1 : 0;
+    let fine = 0;
+    if (diff.fines && lowSustainStreak >= 2) {
+      fine = 800;
+      budget -= fine;
+    }
+
+    const dayResult = {
+      day: state.day, event, served, unmet, kWh, waterDirectMl, waterIndirectL, waterTotalL,
+      revenue, sustainDelta, repDelta, fine, actionTaken: canAfford ? actionDef : null, blocked: !canAfford, cost
+    };
+
+    // Cada 3 días (incluido el primero) aparece una afirmación Mito/Dato/Depende
+    const triggersTrivia = diff.trivia && state.day % 4 === 1;
+
+    setState(s => {
+      const triviaItem = triggersTrivia ? pickTrivia(s.usedTriviaIds) : null;
+      return {
+        ...s,
+        budget, capacity, cooling, renewable, efficiency, resilience, audited, purchases,
+        sustainability: newSustainability,
+        reputation: newReputation,
+        lowSustainStreak,
+        totalServed: s.totalServed + served,
+        totalUnmet: s.totalUnmet + unmet,
+        totalKWh: s.totalKWh + kWh,
+        totalWaterL: s.totalWaterL + waterTotalL,
+        totalDirectWaterL: s.totalDirectWaterL + waterDirectMl / 1000,
+        totalIndirectWaterL: s.totalIndirectWaterL + waterIndirectL,
+        totalInfraWaterL: s.totalInfraWaterL + infraWaterAdded,
+        totalRevenue: s.totalRevenue + revenue,
+        totalFines: s.totalFines + fine,
+        history: [...s.history, dayResult],
+        dayResult,
+        trivia: triviaItem ? { ...triviaItem, chosen: null } : null,
+        usedTriviaIds: triviaItem ? [...s.usedTriviaIds, triviaItem.id] : s.usedTriviaIds,
+      };
+    });
+  };
+
+  const answerTrivia = (choice) => {
+    setState(s => {
+      if (!s.trivia || s.trivia.chosen) return s;
+      const correct = choice === s.trivia.answer;
+      return {
+        ...s,
+        trivia: { ...s.trivia, chosen: choice, correct },
+        knowledge: { correct: s.knowledge.correct + (correct ? 1 : 0), total: s.knowledge.total + 1 },
+      };
+    });
+  };
+
+  const nextDay = () => {
+    setChosen(null);
+    setState(s => {
+      const day = s.day + 1;
+      const finished = day > diff.days;
+      const oldIdx = missionIndexForDay(s.day, diff.days, MISSION_DEFS.length);
+      const newIdx = finished ? MISSION_DEFS.length : missionIndexForDay(day, diff.days, MISSION_DEFS.length);
+
+      let reputation = s.reputation;
+      let sustainability = s.sustainability;
+      let missionsLog = s.missionsLog;
+      let missionNote = null;
+
+      if (diff.missions && newIdx !== oldIdx) {
+        const missionDef = MISSION_DEFS[oldIdx];
+        const met = missionDef.evaluate(s);
+        if (met && missionDef.bonus) {
+          if (missionDef.bonus.type === "reputation") reputation = Math.min(100, reputation + missionDef.bonus.amount);
+          if (missionDef.bonus.type === "sustainability") sustainability = Math.min(100, sustainability + missionDef.bonus.amount);
+        }
+        missionsLog = [...missionsLog, { id: missionDef.id, title: missionDef.title, met, bonusLabel: missionDef.bonusLabel }];
+        missionNote = { title: missionDef.title, met, bonusLabel: missionDef.bonusLabel };
+      }
+
+      if (finished) return { ...s, finished: true, dayResult: null, reputation, sustainability, missionsLog, missionNote };
+
+      let event = pickEvent(diff);
+      let usedSourceIds = s.usedSourceIds;
+      if (event.kind === "sources") {
+        const scenario = pickSourceScenario(usedSourceIds);
+        event = { ...event, scenario };
+        usedSourceIds = [...usedSourceIds, scenario.id];
+      }
+      return {
+        ...s, day, event, reputation, sustainability, missionsLog, missionNote, usedSourceIds,
+        currentMissionIndex: newIdx,
+        eventChoiceResolved: event.kind !== "choice" && event.kind !== "sources",
+        eventChoiceNote: null,
+        demand: rollDemand(day, diff, event),
+        dayResult: null,
+        trivia: null,
+      };
+    });
+  };
+
+  const restart = () => {
+    setState(null);
+    setDiffKey(null);
+    setChosen(null);
+    setZone(null);
+  };
+
+  if (state.finished) {
+    const glasses = (state.totalWaterL * 1000) / GLASS_OF_WATER_ML;
+    const phoneCharges = state.totalKWh / PHONE_CHARGE_KWH;
+    const achievements = computeAchievements(state);
+    const scores = computeScores(state);
+    const ending = computeEnding(state, scores);
+    const avgScore = Math.round((scores.conocimiento + scores.gestionHidrica + scores.eficiencia + scores.transparencia + scores.impacto) / 5);
+
+    return (
+      <div>
+        <div className="hi-card" style={{ background: ending.bg, borderRadius: 12, padding: "22px 20px", marginBottom: 14, textAlign: "center", border: `1px solid ${ending.color}`, position: "relative", overflow: "hidden" }}>
+          {(ending.id === "innovador" || ending.id === "sostenible") && <Confetti />}
+          <div className="hi-pop" style={{ fontSize: 34, marginBottom: 6 }}>{ending.emoji}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 20, color: ending.color, marginBottom: 6 }}>{ending.title}</div>
+          <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 auto", maxWidth: 480 }}>{ending.tagline}</p>
+        </div>
+
+        {easy && (
+          <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+            <GotaMascot mood={state.sustainability >= 50 && state.budget > 0 ? "happy" : "worried"} size={54} />
+            <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>
+              {state.sustainability >= 50 && state.budget > 0
+                ? <><strong>¡Meta cumplida!</strong> Cuidaste el agua ({Math.round(state.sustainability)}%) y cerraste con plata.</>
+                : <><strong>Casi.</strong> Tu meta era terminar con el agua cuidada en 50% o más y plata en el presupuesto. ¡Probá de nuevo!</>}
+            </div>
+          </div>
+        )}
+        {!easy && (<>
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Ranking de esta partida</span>
+          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{rankTitle(avgScore)} · {avgScore}/100</span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8, marginBottom: 14 }}>
+          <ScoreBar icon={Brain} color="var(--acc-indigo)" label="Conocimiento" value={scores.conocimiento} />
+          <ScoreBar icon={Droplets} color="var(--acc-teal)" label="Gestión hídrica" value={scores.gestionHidrica} />
+          <ScoreBar icon={Zap} color="var(--acc-mustard)" label="Eficiencia energética" value={scores.eficiencia} />
+          <ScoreBar icon={MessageSquare} color="var(--acc-rose)" label="Transparencia" value={scores.transparencia} />
+          <ScoreBar icon={Leaf} color="var(--acc-green)" label="Impacto ambiental" value={scores.impacto} />
+        </div>
+        </>)}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
+          <StatBox icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={numFmt(state.totalServed, 0)} label="Consultas atendidas" />
+          <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Electricidad total" />
+          <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua total" />
+          <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto final" />
+        </div>
+
+        {state.totalFines > 0 && (
+          <div className="hi-card" style={{ background: "var(--acc-red-bg)", border: "1px solid var(--acc-red)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12.5, color: "var(--acc-red)" }}>
+            Pagaste ${numFmt(state.totalFines, 0)} en multas por sostener la sostenibilidad demasiado baja demasiado tiempo.
+          </div>
+        )}
+
+        {state.missionsLog && state.missionsLog.length > 0 && (
+          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <Compass size={15} color="var(--acc-purple)" />
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, color: "var(--ink)" }}>Bitácora de misiones</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {state.missionsLog.map((m, i) => (
+                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "7px 0", borderBottom: i < state.missionsLog.length - 1 ? "1px solid var(--line)" : "none" }}>
+                  <span style={{ color: "var(--ink)" }}>{m.title}</span>
+                  <span style={{ color: m.met ? "var(--acc-green)" : "var(--ink-soft)", fontWeight: 700, fontSize: 11 }}>{m.met ? "Cumplida" : "No cumplida"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {achievements.length > 0 && (
+          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--ink)" }}>Logros de esta partida</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {achievements.map(ach => {
+                const Icon = ach.icon;
+                return (
+                  <span key={ach.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ach.color + "22", color: ach.color, borderRadius: 20, padding: "6px 12px", fontSize: 11.5, fontWeight: 600 }}>
+                    <Icon size={12} /> {ach.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {diff.objectives && <ObjectivesPanel state={state} final />}
+        {diff.dataPanel && <DataPanel state={state} defaultOpen />}
+
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>El agua invisible de tu partida</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <span style={{ color: "var(--ink-soft)" }}>💧 Agua directa (refrigeración)</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{numFmt(state.totalDirectWaterL, 1)} L</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <span style={{ color: "var(--ink-soft)" }}>⚡ Agua indirecta (generar electricidad)</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{numFmt(state.totalIndirectWaterL, 1)} L</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <span style={{ color: "var(--ink-soft)" }}>🖥️ Agua de infraestructura (fabricar hardware)</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{numFmt(state.totalInfraWaterL, 1)} L</span>
+            </div>
+          </div>
+          <p style={{ fontSize: 11.5, color: "var(--ink-soft)", lineHeight: 1.5, margin: 0 }}>
+            La cifra de agua de infraestructura es una aproximación ilustrativa: es muy difícil de medir con precisión por servidor.
+          </p>
+        </div>
+
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
+          <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
+            Tu data center gastó el equivalente a <strong style={{ color: "var(--acc-teal)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
+            {" "}<strong style={{ color: "var(--acc-blue)" }}>{numFmt(phoneCharges, 0)} cargas de celular</strong> a lo largo de {diff.days} días atendiendo consultas de IA en dificultad {diff.label.toLowerCase()}, en {zone.label}.
+          </p>
+        </div>
+
+        <button onClick={restart} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center" }}>
+          <RotateCcw size={14} /> Jugar de nuevo
+        </button>
+      </div>
+    );
+  }
+
+  const canAffordChosen = chosen ? state.budget >= costFor(GAME_ACTION_DEFS.find(a => a.id === chosen), state) : true;
+
+  return (
+    <div key={`${state.day}-${state.dayResult ? "result" : "action"}`} className="hi-day-enter">
+      {state.dayResult && (
+        <svg key={`fall-${state.day}`} className="hi-fall" width="18" height="24" viewBox="0 0 12 16" aria-hidden="true">
+          <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
+        </svg>
+      )}
+      <div role="status" aria-live="polite" className="hi-sr">{`Día ${state.day} de ${diff.days}. ${gotaSays(state)}`}</div>
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {!easy && <GotaMascot mood={mood} size={22} react={gotaReact} />}
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}>SequIA</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-soft)" }}>Día {state.day} / {diff.days} · {diff.label} · {zone.emoji}</span>
+            <button onClick={() => setShowGuide(true)} className="hi-btn" aria-label="Ver guía paso a paso" title="Ver guía paso a paso" style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--ink-soft)", display: "flex" }}>
+              <Info size={15} />
+            </button>
+          </div>
+        </div>
+        {easy ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8, paddingLeft: 4 }}>
+            <GotaMascot mood={mood} size={64} react={gotaReact} />
+            <div className="hi-bubble" key={gotaSays(state)} style={{ flex: 1 }}>{gotaSays(state)}</div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: 0 }}>
+            Atendé consultas de IA sin descuidar el agua, la electricidad y tu reputación pública.
+          </p>
+        )}
+        {(() => {
+          const done = state.dayResult ? state.day : state.day - 1;
+          const pct = Math.max(0, Math.min(100, (done / diff.days) * 100));
+          return (
+            <div style={{ position: "relative", height: 8, borderRadius: 4, background: "var(--paper-soft)", border: "1px solid var(--line)", margin: "14px 4px 4px" }} role="progressbar" aria-valuemin={0} aria-valuemax={diff.days} aria-valuenow={done} aria-label="Avance de la partida">
+              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, var(--acc-blue), var(--logo-cyan))", transition: "width .6s ease" }} />
+              <svg width="16" height="20" viewBox="0 0 12 16" style={{ position: "absolute", top: "50%", left: `${pct}%`, transform: "translate(-50%, -52%)", transition: "left .6s ease", filter: "drop-shadow(0 2px 3px rgba(41,82,227,0.35))" }} aria-hidden="true">
+                <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
+              </svg>
+            </div>
+          );
+        })()}
+      </div>
+
+      {!state.dayResult && state.demand != null && (() => {
+        const chosenDef = chosen ? GAME_ACTION_DEFS.find(a => a.id === chosen) : null;
+        const addsCapacity = !!chosenDef && chosenDef.id === "capacity" && state.budget >= costFor(chosenDef, state);
+        const eventCapMult = state.event && state.event.kind === "modifier" ? state.event.capacityMult : 1;
+        const capacityToday = Math.round((state.capacity + (addsCapacity ? 400 : 0)) * eventCapMult);
+        const missing = Math.max(0, state.demand - capacityToday);
+        return (
+          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "14px 16px", marginBottom: 12, position: "relative", border: `1px solid ${missing > 0 ? "var(--acc-red)" : "var(--line)"}` }}>
+            <InfoButton onClick={(el) => setInfo({ key: "demand", anchor: el })} label="Más información sobre consultas y capacidad" style={{ position: "absolute", top: 10, right: 10 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, paddingRight: 28 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}><Users size={12} /> Consultas que llegan hoy</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 22, color: "var(--ink)" }}>{numFmt(state.demand, 0)}</div>
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}><Server size={12} /> Capacidad para atender</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 22, color: "var(--acc-blue)" }}>{numFmt(capacityToday, 0)}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11.5, marginTop: 8, color: missing > 0 ? "var(--acc-red)" : "var(--acc-green)", fontWeight: 600 }}>
+              {missing > 0
+                ? `Te faltan ${numFmt(missing, 0)} de capacidad: esas consultas se pierden y bajan tu reputación.`
+                : "✓ Podés atender todas las consultas de hoy."}
+            </div>
+          </div>
+        );
+      })()}
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Tus números hasta ahora</span>
+        <InfoButton onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${diff.showEnergy ? 3 : 2}, 1fr)`, gap: 8, marginBottom: 10 }}>
+        <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua acumulada" delay={0} />
+        {diff.showEnergy && <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Energía acumulada" delay={40} />}
+        <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto" delay={80} />
+      </div>
+
+      {easy ? (
+        <CareBar value={state.sustainability} label="Agua cuidada" />
+      ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+        <div style={{ position: "relative" }}>
+          <Gauge value={state.sustainability} color={gradeFor(state.sustainability).color} label="Sostenibilidad" />
+          <InfoButton onClick={(el) => setInfo({ key: "sostenibilidad", anchor: el })} label="Más información sobre la sostenibilidad" style={{ position: "absolute", top: 8, right: 8 }} />
+        </div>
+        <div style={{ position: "relative" }}>
+          <Gauge value={state.reputation} color={reputationGrade(state.reputation).color} label="Reputación" />
+          <InfoButton onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
+        </div>
+      </div>
+      )}
+
+      {diff.objectives && <ObjectivesPanel state={state} />}
+      {diff.dataPanel && <DataPanel state={state} />}
+
+      {!easy && <button onClick={() => setShowSetup(v => !v)} aria-expanded={showSetup} className="hi-btn" style={{ ...ghostBtn, width: "100%", justifyContent: "center", marginBottom: showSetup ? 8 : 12 }}>
+        <Sliders size={13} /> {showSetup ? "Ocultar mi configuración actual" : "Ver mi configuración actual"}
+      </button>}
+
+      {showSetup && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))", gap: 8, marginBottom: 12 }}>
+          <StatBox icon={Snowflake} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${state.cooling}%`} label="Enfriamiento" />
+          <StatBox icon={Wind} color="var(--acc-purple)" bg="var(--acc-purple-bg)" value={`${state.renewable}%`} label="Renovable" />
+          <StatBox icon={Sliders} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={`${state.efficiency}%`} label="Eficiencia" />
+        </div>
+      )}
+
+      {diff.fines && state.lowSustainStreak >= 1 && (
+        <div role="alert" className="hi-card" style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--acc-red-bg)", border: "1px solid var(--acc-red)", borderRadius: 8, padding: "9px 12px", marginBottom: 12 }}>
+          <AlertTriangle size={14} color="var(--acc-red)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 11.5, color: "var(--acc-red)" }}>Sostenibilidad muy baja hace {state.lowSustainStreak} día{state.lowSustainStreak > 1 ? "s" : ""}: si sigue así, te multan.</span>
+        </div>
+      )}
+
+      {state.event && state.event.kind === "modifier" && state.event.id !== "calm" && !state.dayResult && (
+        <div className="hi-alert-in" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--acc-mustard-bg)", border: "1px solid var(--acc-mustard)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+          <AlertTriangle size={15} color="var(--acc-mustard)" style={{ marginTop: 1, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acc-mustard)" }}>{state.event.emoji} {state.event.label}</div>
+            <div style={{ fontSize: 12, color: "var(--ink)" }}>{state.event.desc}</div>
+          </div>
+        </div>
+      )}
+
+      {state.event && state.event.kind === "choice" && !state.eventChoiceResolved && (
+        <div className="hi-card" style={{ background: "var(--acc-indigo-bg, var(--paper-soft))", border: `1px solid ${state.event.character ? state.event.character.color : "var(--acc-purple)"}`, borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
+          {state.event.character ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <CharacterAvatar character={state.event.character} />
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: state.event.character.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{state.event.character.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: state.event.character.color }}>
+                  {state.event.label}{state.event.emoji !== state.event.character.emoji ? ` ${state.event.emoji}` : ""}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acc-purple)", marginBottom: 4 }}>{state.event.emoji} {state.event.label}</div>
+          )}
+          <div style={{ fontSize: 12, color: "var(--ink)", marginBottom: 10, fontStyle: "italic" }}>{state.event.desc}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {state.event.options.map(opt => (
+              <button key={opt.id} onClick={() => resolveEventChoice(opt.id)} className="hi-btn" style={{ textAlign: "left", padding: "9px 12px", borderRadius: 6, border: "1px solid var(--line)", background: "var(--paper)", cursor: "pointer" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>{opt.effect}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {state.event && state.event.kind === "sources" && !state.eventChoiceResolved && state.event.scenario && (
+        <div className="hi-card" style={{ background: "var(--acc-indigo-bg, var(--paper-soft))", border: `1px solid ${state.event.character ? state.event.character.color : "var(--acc-rose)"}`, borderRadius: 8, padding: "12px 14px", marginBottom: 12, position: "relative" }}>
+          <InfoButton onClick={(el) => setInfo({ key: "sources", anchor: el })} label="Cómo reconocer una fuente confiable" style={{ position: "absolute", top: 10, right: 10 }} />
+          {state.event.character ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <CharacterAvatar character={state.event.character} />
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: state.event.character.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{state.event.character.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: state.event.character.color }}>
+                  {state.event.label}{state.event.emoji !== state.event.character.emoji ? ` ${state.event.emoji}` : ""}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acc-rose)", marginBottom: 4 }}>{state.event.emoji} {state.event.label}</div>
+          )}
+          <div style={{ fontSize: 12, color: "var(--ink)", marginBottom: 10, fontStyle: "italic" }}>{state.event.scenario.prompt}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>ⓘ ¿Cuál es la fuente confiable?</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {state.event.scenario.sources.map(src => (
+              <button key={src.id} onClick={() => resolveSourceChoice(src.id)} className="hi-btn" style={{ textAlign: "left", padding: "9px 12px", borderRadius: 6, border: "1px solid var(--line)", background: "var(--paper)", cursor: "pointer" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>{src.label}</div>
+                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>{src.type}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {state.eventChoiceNote && !state.dayResult && (
+        <div className="hi-card" style={{ background: "var(--paper-soft)", borderRadius: 8, padding: "9px 12px", marginBottom: 12, fontSize: 12, color: "var(--ink-soft)" }}>
+          {state.eventChoiceNote}
+        </div>
+      )}
+
+      {state.eventChoiceResolved && !state.dayResult && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+            {visibleActions.map(action => {
+              const Icon = action.icon;
+              const cost = costFor(action, state);
+              const affordable = state.budget >= cost;
+              const active = chosen === action.id;
+              const disabledAudit = action.id === "audit" && state.audited;
+              return (
+                <div key={action.id} style={{ position: "relative" }}>
+                <button
+                  onClick={() => !disabledAudit && setChosen(action.id)}
+                  className={active ? "hi-btn hi-ink" : "hi-btn hi-ink-rest"}
+                  aria-disabled={disabledAudit}
+                  aria-pressed={active}
+                  style={{
+                    width: "100%", textAlign: "left", padding: "11px 44px 11px 14px", borderRadius: 8, cursor: disabledAudit ? "default" : "pointer",
+                    border: `1px solid ${active ? "var(--ink)" : "var(--line)"}`,
+                    background: active ? "var(--paper-soft)" : "var(--paper)",
+                    opacity: (affordable && !disabledAudit) ? 1 : 0.5,
+                    display: "flex", alignItems: "center", gap: 10
+                  }}
+                >
+                  <div className="hi-icon-wig" style={{ width: 28, height: 28, borderRadius: 7, background: action.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon size={14} color={action.color} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                      {easy && action.easyLabel ? action.easyLabel : action.label} {cost > 0 && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--ink-soft)" }}>· ${numFmt(cost, 0)}</span>}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
+                      {disabledAudit ? "Ya hiciste una auditoría esta partida." : ((active || easy) ? (easy && action.easyDesc ? action.easyDesc : action.desc) : null)}
+                      {!affordable && !disabledAudit ? " (no te alcanza el presupuesto)" : ""}
+                    </div>
+                  </div>
+                </button>
+                <InfoButton onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ position: "relative", marginBottom: 12 }}>
+          <button
+            onClick={() => setChosen("save")}
+            className="hi-btn"
+            aria-pressed={chosen === "save"}
+            style={{
+              width: "100%", textAlign: "left", padding: "11px 44px 11px 14px", borderRadius: 8, cursor: "pointer", marginBottom: 0,
+              border: `1px dashed ${chosen === "save" ? "var(--acc-blue)" : "var(--ink-soft)"}`,
+              background: chosen === "save" ? "var(--acc-blue-bg)" : "transparent",
+              display: "flex", alignItems: "center", gap: 10,
+            }}
+          >
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--paper-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Wallet size={14} color={chosen === "save" ? "var(--acc-blue)" : "var(--ink-soft)"} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: chosen === "save" ? "var(--acc-blue)" : "var(--ink)" }}>Pasar el día y ahorrar</div>
+              <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>No invertís nada hoy: guardás el presupuesto para más adelante.</div>
+            </div>
+          </button>
+          <InfoButton onClick={(el) => setInfo({ key: "save", anchor: el })} label="Más información sobre pasar el día y ahorrar" style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+          </div>
+
+          <button
+            onClick={resolveDay}
+            disabled={!chosen}
+            className="hi-btn"
+            style={{ ...primaryBtn, width: "100%", justifyContent: "center", opacity: chosen ? 1 : 0.5, cursor: chosen ? "pointer" : "default" }}
+          >
+            Confirmar día <ArrowRightIcon />
+          </button>
+        </>
+      )}
+
+      {state.dayResult && (
+        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, border: "1px solid var(--line)", position: "relative", overflow: "hidden" }}>
+          {easy && state.dayResult.sustainDelta > 0 && state.dayResult.unmet === 0 && <Confetti />}
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>
+            Resultado del día {state.dayResult.day}
+          </div>
+          {state.dayResult.blocked && (
+            <p style={{ fontSize: 12, color: "var(--acc-red)", marginBottom: 8 }}>No te alcanzó el presupuesto, así que no se aplicó ninguna inversión hoy.</p>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8, marginBottom: 10 }}>
+            <ResultBox icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" label="Atendidas" value={numFmt(state.dayResult.served, 0)} />
+            {diff.showEnergy && <ResultBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" label="Electricidad" value={formatEnergy(state.dayResult.kWh * 1000)} />}
+            <ResultBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" label="Agua total" value={`${numFmt(state.dayResult.waterTotalL, 2)} L`} />
+          </div>
+          {state.dayResult.unmet > 0 && (
+            <p style={{ fontSize: 12, color: "var(--ink-soft)", marginBottom: 6 }}>
+              No se pudo atender a {numFmt(state.dayResult.unmet, 0)} consultas por falta de capacidad.
+            </p>
+          )}
+          {state.dayResult.fine > 0 && (
+            <p style={{ fontSize: 12, color: "var(--acc-red)", marginBottom: 6 }}>
+              Multa por sostenibilidad baja sostenida: -${numFmt(state.dayResult.fine, 0)}.
+            </p>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 14 }}>
+            <span className="hi-delta" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.sustainDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
+              {state.dayResult.sustainDelta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {state.dayResult.sustainDelta >= 0 ? "+" : ""}{state.dayResult.sustainDelta} {easy ? "agua cuidada" : "sostenibilidad"}
+            </span>
+            {diff.showRep && <span className="hi-delta" style={{ animationDelay: ".15s", display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: state.dayResult.repDelta >= 0 ? "var(--acc-green)" : "var(--acc-red)" }}>
+              {state.dayResult.repDelta >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {state.dayResult.repDelta >= 0 ? "+" : ""}{state.dayResult.repDelta} reputación
+            </span>}
+          </div>
+          {easy && (
+            <div className="hi-card" style={{ background: "var(--acc-blue-bg)", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 12.5, color: "var(--ink)", lineHeight: 1.5 }}>
+              💡 <strong>Dato curioso:</strong> {EASY_TIPS[(state.dayResult.day - 1) % EASY_TIPS.length]}
+            </div>
+          )}
+          {state.trivia && (
+            <div className="hi-card" style={{ background: "var(--acc-indigo-bg)", border: "1px solid var(--acc-indigo)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <Brain size={14} color="var(--acc-indigo)" />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--acc-indigo)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Mito / Dato / Depende</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 10px" }}>{state.trivia.statement}</p>
+              {!state.trivia.chosen ? (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => answerTrivia("verdadero")} className="hi-btn" style={{ flex: 1, padding: "8px 6px", borderRadius: 6, border: "1px solid var(--acc-green)", background: "var(--acc-green-bg)", color: "var(--acc-green)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Verdadero</button>
+                  <button onClick={() => answerTrivia("falso")} className="hi-btn" style={{ flex: 1, padding: "8px 6px", borderRadius: 6, border: "1px solid var(--acc-red)", background: "var(--acc-red-bg)", color: "var(--acc-red)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Falso</button>
+                  <button onClick={() => answerTrivia("depende")} className="hi-btn" style={{ flex: 1, padding: "8px 6px", borderRadius: 6, border: "1px solid var(--acc-mustard)", background: "var(--acc-mustard-bg)", color: "var(--acc-mustard)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Depende</button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--paper)", borderRadius: 6, padding: "10px 12px" }}>
+                  {state.trivia.correct
+                    ? <CheckCircle2 size={16} color="var(--acc-green)" style={{ flexShrink: 0, marginTop: 1 }} />
+                    : <XCircle size={16} color="var(--acc-red)" style={{ flexShrink: 0, marginTop: 1 }} />}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: state.trivia.correct ? "var(--acc-green)" : "var(--acc-red)", marginBottom: 3 }}>
+                      {state.trivia.correct ? "¡Correcto!" : `Incorrecto — la respuesta era "${state.trivia.answer}"`}
+                    </div>
+                    <p style={{ fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.5, margin: 0 }}>{state.trivia.explanation}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={nextDay}
+            disabled={!!state.trivia && !state.trivia.chosen}
+            className="hi-btn"
+            style={{ ...primaryBtn, width: "100%", justifyContent: "center", opacity: (state.trivia && !state.trivia.chosen) ? 0.5 : 1, cursor: (state.trivia && !state.trivia.chosen) ? "default" : "pointer" }}
+          >
+            {state.day >= diff.days ? "Ver resultado final" : "Día siguiente"}
+          </button>
+        </div>
+      )}
+
+      {easy ? <GoalStrip state={state} /> : (
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginTop: 12, marginBottom: 0, borderLeft: "4px solid var(--acc-purple)" }}>
+        {state.missionNote && (
+          <div style={{ marginBottom: 8, fontSize: 12, color: state.missionNote.met ? "var(--acc-green)" : "var(--ink-soft)" }}>
+            {state.missionNote.met ? "✅" : "➖"} Misión "{state.missionNote.title}" {state.missionNote.met ? "cumplida" : "no cumplida"}
+            {state.missionNote.met ? ` — ${state.missionNote.bonusLabel}` : ""}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <Compass size={14} color="var(--acc-purple)" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--acc-purple)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Misión {state.currentMissionIndex + 1}/{MISSION_DEFS.length} · {MISSION_DEFS[state.currentMissionIndex].title}
+          </span>
+        </div>
+        <p style={{ fontSize: 12.5, color: "var(--ink)", margin: "0 0 4px", lineHeight: 1.5 }}>{MISSION_DEFS[state.currentMissionIndex].narrative}</p>
+        <p style={{ fontSize: 11, color: "var(--ink-soft)", margin: 0 }}>Objetivo: {MISSION_DEFS[state.currentMissionIndex].hint}</p>
+      </div>
+      )}
+
+      {state.history.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <button onClick={() => setShowHistory(h => !h)} className="hi-btn" aria-expanded={showHistory} style={ghostBtn}>
+            <ChevronDown size={13} style={{ transform: showHistory ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }} />
+            {showHistory ? "Ocultar historial" : "Ver historial de días"}
+          </button>
+          {showHistory && (
+            <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 14, marginTop: 8, maxHeight: 220, overflowY: "auto" }}>
+              {state.history.slice().reverse().map(h => (
+                <div key={h.day} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--line)", fontSize: 11.5 }}>
+                  <span style={{ color: "var(--ink-soft)" }}>Día {h.day} · {h.event.emoji}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{numFmt(h.served, 0)} consultas · {numFmt(h.waterTotalL, 2)} L</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
+    </div>
+  );
+}
+
+function ArrowRightIcon({ color }) {
+  return <span style={{ fontSize: 14, color: color || "currentColor" }}>→</span>;
+}
+
+
+const SOURCES = [
+  { title: "El centro de datos de la Patagonia y la frontera del agua digital", org: "Sed de Datos — análisis propio, sección Patagonia", url: "https://seddedatos.com.ar/", desc: "Estimación propia de nuestro sitio: ≈25.000 L de agua de refrigeración por día por cada MW de capacidad instalada. Equivale a ≈1 L de agua directa por kWh (25.000 L ÷ 24.000 kWh por MW por día), del mismo orden que los 0,26 mL por 0,24 Wh de Google. Mide el agua directa de refrigeración escalada por capacidad, no el agua de generar la electricidad (esa se calcula aparte, con 1,5 L/kWh)." },
+  { title: "Making AI Less 'Thirsty'", org: "Li, Yang, Islam & Ren — UC Riverside (2023), documento técnico en inglés", url: "https://arxiv.org/abs/2304.03271", desc: "El estudio académico que mide en detalle la huella hídrica directa e indirecta de entrenar y usar modelos como GPT-3 — la base de las cifras de agua por consulta que usa la Calculadora." },
+  { title: "ChatGPT users send 2.5 billion prompts a day", org: "TechCrunch (2025) — en inglés", url: "https://techcrunch.com/2025/07/21/chatgpt-users-send-2-5-billion-prompts-a-day/", desc: "La cifra de escala global que da contexto a por qué un gasto mínimo por consulta termina pesando tanto: 2.500 millones de mensajes diarios, según datos de OpenAI." },
+  { title: "¿Cuánta energía consume la IA de Google? Hicimos los cálculos", org: "Blog oficial de Google (2025)", url: "https://blog.google/intl/es-419/actualizaciones-de-producto/en-la-nube/cuanta-energia-consume-la-ia-de-google-hicimos-los-calculos/", desc: "El anuncio oficial de Google, en español: metodología y cifras (0,24 Wh y 0,26 mL de agua directa por prompt mediano en Gemini)." },
+  { title: "Measuring the environmental impact of delivering AI at Google Scale", org: "arXiv 2508.15734 (2025) — documento técnico en inglés", url: "https://arxiv.org/abs/2508.15734v1", desc: "El paper técnico completo detrás del anuncio de Google, con el detalle de la metodología. Solo está disponible en inglés." },
+  { title: "Cinco gotas de agua: el costo que dice Google tiene un prompt en Gemini", org: "Digital Trends en Español (2025)", url: "https://es.digitaltrends.com/android/cinco-gotas-de-agua-el-costo-que-dice-google-tiene-un-prompt-en-gemini/", desc: "Cobertura en español que suma las críticas de investigadores (Shaolei Ren, Alex de Vries-Gao) sobre lo que el estudio de Google no cuenta: el agua indirecta." },
+  { title: "Google: el indicador Gemini medio utiliza 0,24 vatios-hora de energía y consume 0,26 ml de agua", org: "Data Center Dynamics en español (2025)", url: "https://www.datacenterdynamics.com/es/noticias/google-el-indicador-gemini-medio-utiliza-024-vatios-hora-de-energ%C3%ADa-y-consume-026-ml-de-agua/", desc: "Edición en español de Data Center Dynamics: compara las cifras de Google con las de OpenAI." },
+  { title: "Consejos para investigar el consumo masivo de agua por parte de los centros de datos", org: "Global Investigative Journalism Network, GIJN (en español)", url: "https://gijn.org/es/articulos/investigar-consumo-masivo-de-agua-por-centros-de-datos/", desc: "Explica en español la diferencia entre agua directa e indirecta en centros de datos de EE.UU., con los datos del Lawrence Berkeley National Laboratory." },
+  { title: "La huella hídrica invisible de la inteligencia artificial", org: "Consejo Latinoamericano de Ética en Tecnología (2026)", url: "https://somosclet.org/la-huella-hidrica-invisible-de-la-inteligencia-artificial/", desc: "Análisis en español sobre agua directa e indirecta, con los mismos datos del Lawrence Berkeley (800 mil millones de litros indirectos en 2023)." },
+  { title: "Miden el impacto ecológico de usar ChatGPT-3: 2 litros de agua por 10 a 50 consultas", org: "LA NACIÓN (2024)", url: "https://www.lanacion.com.ar/tecnologia/miden-el-impacto-ecologico-de-usar-chatgpt-3-2-litros-de-agua-por-10-a-50-consultas-nid18102024/", desc: "Cobertura en español del estudio 'Making AI Less Thirsty' sobre el entrenamiento de GPT-3: unos 700.000 litros de agua directa." },
+  { title: "¿Cuánta agua consume realmente la IA?", org: "Nation.es (2026)", url: "https://nation.es/cuanta-agua-consume-realmente-la-ia/", desc: "Compara en español las cifras de Google, Mistral y la Universidad de California Riverside, y explica por qué no son directamente comparables entre sí." },
+  { title: "Guerra de recursos: el megaproyecto de OpenAI por US$ 25.000M tensiona el agua, la energía y el cobre en Argentina", org: "Acero y Roca (2026)", url: "https://aceroyroca.com/2026/08/08/noticias-openai-stargate-data-center-cobre-rigi-argentina/", desc: "Cobertura en español de Stargate Argentina (Neuquén, hasta 500 MW), con la estimación de 7,1 m³ de agua por cada MWh (directa e indirecta combinadas) para este tipo de mega centros de datos. En SequIA se usa solo como escenario de referencia: la parte indirecta se calcula con 1,5 L/kWh." },
+];
+
+function SourcesList() {
+  return (
+    <>
+      {SOURCES.map((s, i) => (
+        <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="hi-card hi-row hi-lift" style={{
+          display: "block", background: "var(--paper)", borderRadius: 8, padding: 14, marginBottom: 8,
+          textDecoration: "none", border: "1px solid var(--line)", animationDelay: `${i * 40}ms`
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", marginBottom: 3 }}>{s.title}</div>
+              <div style={{ fontSize: 11, color: "var(--acc-blue)", fontWeight: 600, marginBottom: 6 }}>{s.org}</div>
+              <p style={{ fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.5, margin: 0 }}>{s.desc}</p>
+            </div>
+            <ExternalLink size={14} color="var(--ink-soft)" style={{ flexShrink: 0, marginTop: 2 }} />
+          </div>
+        </a>
+      ))}
+    </>
+  );
+}
+
+// Modal accesible desde Inicio: junta los datos sueltos (agua/electricidad
+// por consulta) y la lista completa de Fuentes en un solo lugar, para no
+// saturar la pantalla principal con números y notas al pie.
+function DatosFuentesModal({ onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(20,24,31,0.55)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        className="hi-card"
+        style={{
+          background: "var(--paper)", borderRadius: "20px 20px 0 0", padding: "22px 20px 28px",
+          width: "100%", maxWidth: 520, maxHeight: "88vh", overflowY: "auto", position: "relative",
+        }}
+      >
+        <button onClick={onClose} aria-label="Cerrar" style={{
+          position: "absolute", top: 14, right: 14, background: "var(--paper-soft)", border: "none",
+          borderRadius: "50%", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+        }}>
+          <X size={15} color="var(--ink-soft)" />
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <Link2 size={18} color="var(--acc-blue)" />
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>Datos y fuentes</div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 16 }}>
+          <StatBox icon={Droplet} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,26 mL" label="Agua directa por consulta de texto" />
+          <StatBox icon={Factory} color="var(--dark-panel)" bg="var(--acc-blue-bg)" value="≈1,5 L" label="Agua indirecta por kWh (rango 0,5–2,5; mega centros: hasta ≈7,1 L, directa + indirecta)" />
+          <StatBox icon={Zap} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,24 Wh" label="Electricidad por consulta de texto mediana (Gemini, 2025)" />
+        </div>
+
+        <p style={{ fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 16px" }}>
+          Estos números varían enormemente según el modelo, el centro de datos, la tecnología de refrigeración y la matriz eléctrica de cada país. Son los mejores datos públicos disponibles, no un promedio universal.
+        </p>
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>Fuentes</div>
+        <SourcesList />
+      </div>
+    </div>
+  );
+}
+
+
+// Error Boundary: captura cualquier error de renderizado de React con su
+// mensaje y stack reales. Sin esto, Babel compilando en el navegador hace
+// que el handler global de arriba solo vea un "Script error." sin detalle.
+class BootErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) {
+    var msg = (error && error.message) ? error.message : String(error);
+    var compStack = (info && info.componentStack) ? info.componentStack.split("\n").slice(0, 4).join("\n") : "";
+    showBootError(msg + (compStack ? ("\n" + compStack) : ""));
+  }
+  render() {
+    if (this.state.error) return null;
+    return this.props.children;
+  }
+}
+
+try {
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<BootErrorBoundary><App /></BootErrorBoundary>);
+} catch (err) {
+  showBootError((err && err.message) ? err.message : String(err));
+}
+</script>
+</body>
+</html>
