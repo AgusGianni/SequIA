@@ -4,6 +4,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>SequIA — El costo oculto de la IA</title>
+<meta name="description" content="SequIA es un juego sobre la IA, el agua y las decisiones que no vemos: gestioná un centro de datos y descubrí el costo oculto de cada decisión." />
+<link rel="canonical" href="https://www.sequ-ia.com.ar/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="SequIA" />
+<meta property="og:locale" content="es_AR" />
+<meta property="og:url" content="https://www.sequ-ia.com.ar/" />
+<meta property="og:title" content="SequIA — El costo oculto de la IA" />
+<meta property="og:description" content="Un juego sobre la IA, el agua y las decisiones que no vemos. Gestioná un centro de datos y descubrí el costo oculto de cada decisión." />
+<meta property="og:image" content="https://www.sequ-ia.com.ar/sequia-og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="SequIA: un juego sobre la IA, el agua y lo que no vemos" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@seddedatos" />
+<meta name="twitter:title" content="SequIA — El costo oculto de la IA" />
+<meta name="twitter:description" content="Un juego sobre la IA, el agua y las decisiones que no vemos." />
+<meta name="twitter:image" content="https://www.sequ-ia.com.ar/sequia-og.png" />
 
 <link rel="manifest" href="./manifest.json" />
 <meta name="theme-color" content="#2952E3" />
@@ -2306,7 +2323,7 @@ function buildShareCanvas(d) {
   g.fillStyle = SOFT; g.font = "500 32px Inter, sans-serif"; g.fillText(`≈ ${d.glasses} vasos de agua · ${d.served} consultas atendidas`, W / 2, 1050);
   g.fillStyle = INK; g.font = "600 30px Inter, sans-serif"; g.fillText(d.meta, W / 2, 1120);
   g.font = "700 36px Inter, sans-serif";
-  { const p1 = "Jugá SequIA", p2 = ": sequ-ia.vercel.app"; const a = g.measureText("Jugá Sequ").width, b = g.measureText("IA").width, c = g.measureText(p2).width, x0 = W / 2 - (a + b + c) / 2;
+  { const p1 = "Jugá SequIA", p2 = ": www.sequ-ia.com.ar"; const a = g.measureText("Jugá Sequ").width, b = g.measureText("IA").width, c = g.measureText(p2).width, x0 = W / 2 - (a + b + c) / 2;
     g.textAlign = "left"; g.fillStyle = BLUE; g.fillText("Jugá Sequ", x0, 1185); g.fillStyle = "#FF6A00"; g.fillText("IA", x0 + a, 1185); g.fillStyle = BLUE; g.fillText(p2, x0 + a + b, 1185); g.textAlign = "center"; }
   return c;
 }
@@ -2324,7 +2341,7 @@ function ShareCard({ state, ending, glasses, zone, diff }) {
       const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
       if (!blob) throw new Error("sin imagen");
       const file = new File([blob], "sequia-resultado.png", { type: "image/png" });
-      const text = `Mi centro de datos gastó ${data.water} L de agua en SequIA (${diff.label}). ¿Y el tuyo? https://sequ-ia.vercel.app/`;
+      const text = `Mi centro de datos gastó ${data.water} L de agua en SequIA (${diff.label}). ¿Y el tuyo? https://www.sequ-ia.com.ar/`;
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], text, title: "SequIA" });
         setMsg("¡Listo!");

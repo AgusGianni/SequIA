@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "sequ-ia.vercel.app" }], "destination": "https://www.sequ-ia.com.ar/$1", "permanent": true },
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "sequ-ia.com.ar" }], "destination": "https://www.sequ-ia.com.ar/$1", "permanent": true }
+  ]
+}
