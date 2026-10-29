@@ -267,6 +267,8 @@ function useAnimatedNumber(target, duration = 550) {
 function App() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState("inicio");
+  // al cambiar de sección, siempre se empieza desde arriba
+  useEffect(() => { try { window.scrollTo(0, 0); } catch (e) { /* sin scroll */ } }, [tab]);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [gameActive, setGameActive] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
@@ -574,6 +576,11 @@ function GlobalStyle() {
       .hi-bubble { position: relative; background: var(--acc-blue-bg); border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.45; color: var(--ink); box-shadow: 3px 3px 0 var(--ink); animation: riseIn .35s ease-out both; }
       .hi-bubble::before { content: ""; position: absolute; left: -8px; top: 22px; width: 12px; height: 12px; background: var(--acc-blue-bg); border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
       @keyframes popIn { 0% { transform: scale(0.4) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+      .hi-ghost-info { opacity: 0; pointer-events: none; }
+      .hi-ghost-info:focus-visible { opacity: 1; pointer-events: auto; }
+      .hi-gota-target { outline: 3px dashed var(--pop-or); outline-offset: 3px; border-radius: 10px; transition: outline-color .15s; }
+      .hi-details > summary::-webkit-details-marker { display: none; }
+      .hi-details[open] > summary svg { transform: rotate(180deg); }
       .hi-pop { display: inline-block; animation: popIn .7s cubic-bezier(.2,.8,.3,1.2) both; }
       @keyframes confettiBurst { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
       .hi-confetti { position: absolute; left: 50%; top: 46px; width: 8px; height: 12px; border-radius: 2px; animation: confettiBurst 1.7s ease-out both; }
@@ -758,7 +765,7 @@ const GOTA_BASE_TIPS = [
 function buildGotaCtx({ zone, diffKey, state, chosen }) {
   if (!zone) return { key: "zone", mood: "happy", sticky: false, react: null,
     msg: "Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta.",
-    tips: ["Tocá la «i» de cada zona si querés ver los números.", ...GOTA_BASE_TIPS.filter(t => !t.startsWith("Tocame")), "Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta."] };
+    tips: ["Arrastrame sobre una zona si querés ver sus números.", ...GOTA_BASE_TIPS.filter(t => !t.startsWith("Tocame")), "Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta."] };
   if (!diffKey) return { key: "diff", mood: "happy", sticky: false, react: null,
     msg: "Ahora elegí la dificultad. Fácil es ideal para empezar: pocos datos y yo te voy guiando.",
     tips: ["Normal suma personajes, trivia y más decisiones.", "Difícil agrega objetivos y más imprevistos.", ...GOTA_BASE_TIPS] };
@@ -797,7 +804,7 @@ function buildGotaCtx({ zone, diffKey, state, chosen }) {
   if (state.sustainability < 45) tips.push("El agua está en riesgo: probá enfriar mejor o usar energía limpia.");
   if (state.budget < 1500) tips.push("Te queda poco presupuesto: cuidá cada inversión.");
   if (state.totalUnmet > 0) tips.push("Hubo consultas sin atender: ampliar capacidad ayuda.");
-  tips.push("Tocá la «i» de una mejora para saber qué hace.", ...GOTA_BASE_TIPS);
+  tips.push("Arrastrame sobre una mejora o un número y te cuento más.", ...GOTA_BASE_TIPS);
   let msg = state.day === 1 ? "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño." : "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
   if (mod) msg = `${state.event.emoji} ${state.event.label}: ${state.event.desc}` + (state.diff && state.diff.tier === 1 && EVENT_HINT[state.event.id] ? ` ${EVENT_HINT[state.event.id]}` : "");
   else if (state.sustainability < 35) msg = "El agua está en riesgo. Una mejora de enfriamiento o energía limpia ayudaría.";
@@ -845,6 +852,9 @@ function GotaGuide({ hidden, chase = false }) {
   const [docked, setDocked] = useState(false);
   const dockedRef = useRef(false);
   const visRef = useRef(true);
+  const hoverRef = useRef(null);
+  const [perch, setPerch] = useState(null);     // Gota apoyada junto a algo que está explicando
+  const perchRef = useRef(null);
   const fallingRef = useRef(false);
   fallingRef.current = falling;
 
@@ -910,9 +920,20 @@ function GotaGuide({ hidden, chase = false }) {
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const dr = dockRect(); const v = !dr || (dr.bottom > 64 && dr.top < window.innerHeight - 10);
-      if (v !== visRef.current) { visRef.current = v; setVis(v); }
+      const dr = dockRect();
+      const vNow = !dr || (dr.bottom > 64 && dr.top < window.innerHeight - 10);
+      if (vNow !== visRef.current) { visRef.current = vNow; setVis(vNow); }
       const dk = !!dr; if (dk !== dockedRef.current) { dockedRef.current = dk; setDocked(dk); }
+      if (perchRef.current && !drag.current) {
+        const pel = perchRef.current.el;
+        const q = document.body.contains(pel) ? pel.getBoundingClientRect() : null;
+        if (!q || q.bottom < 64 || q.top > window.innerHeight - 10) { goHome(); return; }
+        if (!fallingRef.current) {
+          const pp = perchPos(pel);
+          if (Math.abs(pp.x - xr.current) > 0.5 || Math.abs(pp.y - yr.current) > 0.5) { xr.current = pp.x; tx.current = pp.x; yr.current = pp.y; setX(pp.x); setY(pp.y); }
+        }
+        return;
+      }
       if (drag.current || fallingRef.current || chaseRef.current || xr.current == null) return;
       const hx = homeX(), hy = homeY();
       if (Math.abs(hx - xr.current) > 0.5 || Math.abs(hy - yr.current) > 0.5) { xr.current = hx; tx.current = hx; yr.current = hy; setX(hx); setY(hy); }
@@ -1005,7 +1026,20 @@ function GotaGuide({ hidden, chase = false }) {
     return () => clearInterval(t);
   }, [enabled, cur.n]);
 
+  const perchPos = (el) => {
+    const q = el.getBoundingClientRect();
+    return { x: Math.min(window.innerWidth - 38, q.right - 12), y: Math.max(70, Math.min(window.innerHeight - H, q.top + q.height / 2 - H / 2)) };
+  };
+  const goHome = () => {
+    perchRef.current = null; setPerch(null);
+    const hx = homeX(), hy = homeY();
+    xr.current = hx; tx.current = hx; yr.current = hy;
+    if (reduce) { setX(hx); setY(hy); gota.setHeld(false); return; }
+    setFalling(true); setX(hx); setY(hy);
+    setTimeout(() => { gota.setHeld(false); setFalling(false); setLanding(true); setTimeout(() => setLanding(false), 500); sfx.play("drop"); setReact("good"); setTimeout(() => setReact(null), 800); }, 640);
+  };
   const tap = () => {
+    if (perchRef.current) { sfx.play("drop"); goHome(); return; }
     sfx.play("drop"); idle.current = 0;
     setReact("good"); setTimeout(() => setReact(null), 900);
     const dk = document.getElementById("gota-dock");
@@ -1022,7 +1056,31 @@ function GotaGuide({ hidden, chase = false }) {
   };
   const onPointerMove = (e) => {
     const d = drag.current; if (!d) return;
-    if (!d.on && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) { d.on = true; setHeld(true); gota.setHeld(true); setFalling(false); }
+    if (!d.on && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) { d.on = true; setHeld(true); gota.setHeld(true); setFalling(false); if (perchRef.current) { perchRef.current = null; setPerch(null); } }
+    if (d.on) {
+      // ¿está sobre algo que Gota puede explicar? (mejora, número, medidor)
+      let found = null;
+      try {
+        const stack = document.elementsFromPoint(e.clientX, e.clientY);
+        for (const el0 of stack) {
+          if (el0.closest && el0.closest("[data-gota]")) continue;
+          for (let el = el0; el && el !== document.body; el = el.parentElement) {
+            if (el.getAttribute && el.getAttribute("data-ginfo")) { found = { key: el.getAttribute("data-ginfo"), el }; break; }
+            const ks = el.querySelectorAll ? el.querySelectorAll("[data-gkey]") : [];
+            if (ks.length === 1) { found = { key: ks[0].getAttribute("data-gkey"), el }; break; }
+            if (ks.length > 1) break;
+          }
+          if (found) break;
+        }
+      } catch (err) { found = null; }
+      if (found && !INFO_TEXTS[found.key]) found = null;
+      const prev = hoverRef.current;
+      if ((prev && prev.el) !== (found && found.el)) {
+        if (prev && prev.el) prev.el.classList.remove("hi-gota-target");
+        if (found) found.el.classList.add("hi-gota-target");
+        hoverRef.current = found;
+      }
+    }
     if (d.on) { const v = clampX(e.clientX - d.ox); xr.current = v; tx.current = v; setX(v); const w = Math.max(6, Math.min(floor(), e.clientY - d.oy)); yr.current = w; setY(w); }
   };
   const onPointerUp = () => {
@@ -1030,14 +1088,23 @@ function GotaGuide({ hidden, chase = false }) {
     if (!d) return;
     if (!d.on) { tap(); return; }
     setHeld(false); moved.current = Date.now();
+    const hov = hoverRef.current; hoverRef.current = null;
+    if (hov && hov.el) {
+      hov.el.classList.remove("hi-gota-target");
+      // Gota se apoya a la izquierda del elemento y es ella la que cuenta la información
+      perchRef.current = { key: hov.key, el: hov.el }; setPerch({ key: hov.key, el: hov.el });
+      const pp = perchPos(hov.el);
+      xr.current = pp.x; tx.current = pp.x; yr.current = pp.y;
+      sfx.play("drop");
+      if (reduce) { setX(pp.x); setY(pp.y); return; }
+      setFalling(true); setX(pp.x); setY(pp.y);
+      setTimeout(() => setFalling(false), 640);
+      return;
+    }
     const hx = homeX(), hy = homeY();
     if (chaseRef.current) { if (ptr.current) setChaseTarget(ptr.current.x, ptr.current.y); return; }
-    if (Math.abs(xr.current - hx) > 2 || Math.abs(yr.current - hy) > 2) {
-      xr.current = hx; tx.current = hx; yr.current = hy;
-      if (reduce) { setX(hx); setY(hy); gota.setHeld(false); return; }
-      setFalling(true); setX(hx); setY(hy);
-      setTimeout(() => { gota.setHeld(false); setFalling(false); setLanding(true); setTimeout(() => setLanding(false), 500); sfx.play("drop"); setReact("good"); setTimeout(() => setReact(null), 800); }, 640);
-    } else gota.setHeld(false);
+    if (Math.abs(xr.current - hx) > 2 || Math.abs(yr.current - hy) > 2) goHome();
+    else gota.setHeld(false);
   };
   const onKeyDown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(); } };
 
@@ -1053,9 +1120,32 @@ function GotaGuide({ hidden, chase = false }) {
   const tail = Math.max(14, Math.min(bw - 26, x + W / 2 - bLeft - 6));
   const text = cur.msg.slice(0, typed);
   const below = y < 150;
+  let perchBubble = null;
+  if (perch && perch.el && document.body.contains(perch.el)) {
+    const q = perch.el.getBoundingClientRect();
+    const data = INFO_TEXTS[perch.key];
+    const pw = Math.min(340, window.innerWidth - 16);
+    const spaceBelow = window.innerHeight - q.bottom - 20, spaceAbove = q.top - 76;
+    const placeBelow = spaceBelow >= 260 || spaceBelow >= spaceAbove;
+    const maxH = Math.max(120, Math.min(Math.round(window.innerHeight * 0.5), placeBelow ? spaceBelow : spaceAbove));
+    const tailX = Math.max(14, Math.min(pw - 26, x + 12));
+    if (data) perchBubble = (
+      <div data-gota="1" onClick={() => { sfx.play("drop"); goHome(); }} style={{
+        position: "fixed", right: 8, width: pw, zIndex: 91, [placeBelow ? "top" : "bottom"]: placeBelow ? q.bottom + 10 : window.innerHeight - q.top + 10,
+        maxHeight: maxH, overflowY: "auto", background: "#fff", border: "2px solid var(--pop-ink)", borderRadius: 12, boxShadow: "3px 3px 0 var(--pop-ink)", padding: "10px 12px 9px",
+        fontSize: 12.5, lineHeight: 1.45, color: "var(--ink)", cursor: "pointer", fontFamily: "var(--font-body)", animation: "riseIn .3s ease-out both",
+      }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 13, textTransform: "uppercase", color: "var(--acc-blue)", marginBottom: 5 }}>{data.title}</div>
+        {(data.body || []).map((t, i) => <p key={i} style={{ margin: "0 0 6px" }}>{t}</p>)}
+        {data.note && <p style={{ margin: "0 0 6px", padding: "6px 8px", borderRadius: 8, background: "var(--acc-blue-bg)", fontSize: 12 }}>{data.note}</p>}
+        <div style={{ fontSize: 10.5, color: "var(--ink-soft)", textAlign: "right" }}>Tocame o arrastrame y vuelvo a mi lugar</div>
+      </div>
+    );
+  }
   return (
     <>
-      {open && cur.msg && !docked && !held && !falling && (
+      {perchBubble}
+      {open && cur.msg && !docked && !held && !falling && !perch && (
         <div className="hi-gbubble" data-gota="1" onClick={() => tap()} aria-hidden="true" style={{
           position: "fixed", left: bLeft, [below ? "top" : "bottom"]: below ? y + H + 8 : window.innerHeight - y + 8, width: bw, zIndex: 90, transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), bottom .62s cubic-bezier(.34,1.35,.5,1)" : "none",
           background: "#fff", border: "2px solid var(--pop-ink)", borderRadius: 12, boxShadow: "3px 3px 0 var(--pop-ink)", padding: "9px 12px 8px",
@@ -1070,11 +1160,11 @@ function GotaGuide({ hidden, chase = false }) {
           <span style={{ position: "absolute", [below ? "top" : "bottom"]: -8, left: tail, width: 12, height: 12, background: "#fff", borderRight: below ? "none" : "2px solid var(--pop-ink)", borderBottom: below ? "none" : "2px solid var(--pop-ink)", borderLeft: below ? "2px solid var(--pop-ink)" : "none", borderTop: below ? "2px solid var(--pop-ink)" : "none", transform: "rotate(45deg)" }} />
         </div>
       )}
-      <div data-gota="1" className={landing ? "hi-gota-land" : undefined} style={{ position: "fixed", left: x, top: y, width: W, height: H, zIndex: 90, touchAction: "none", opacity: vis ? 1 : 0, pointerEvents: vis ? "auto" : "none",  transform: landing || held ? undefined : `rotate(${lean}deg)`, transformOrigin: "50% 100%", transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), opacity .2s ease" : "transform .18s ease-out, opacity .2s ease" }}>
+      <div data-gota="1" className={landing ? "hi-gota-land" : undefined} style={{ position: "fixed", left: x, top: y, width: W, height: H, zIndex: 90, touchAction: "none", opacity: (vis || held || perch) ? 1 : 0, pointerEvents: (vis || held || perch) ? "auto" : "none",  transform: perch ? "scale(.55)" : (landing || held ? undefined : `rotate(${lean}deg)`), transformOrigin: perch ? "0 50%" : "50% 100%", transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), transform .62s cubic-bezier(.34,1.35,.5,1), opacity .2s ease" : "transform .18s ease-out, opacity .2s ease" }}>
         <button onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={onKeyDown}
           aria-label="Gota, tu guía. Tocala para un consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
           style={{ width: W, height: H, padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "none", display: "block", filter: held ? "drop-shadow(0 8px 6px rgba(20,24,31,.28))" : "drop-shadow(0 3px 0 rgba(20,24,31,.22))" }}>
-          <GotaMascot mood={cur.mood || "happy"} size={W} react={react} look={held ? { x: 0, y: -0.6 } : look} blink={blink} talk={talking} />
+          <GotaMascot mood={cur.mood || "happy"} size={W} react={react} look={held ? { x: 0, y: -0.6 } : look} blink={blink} talk={talking || !!perch} />
         </button>
       </div>
     </>
@@ -1697,6 +1787,7 @@ function WaterDropletMeter({ liters, max = 8 }) {
 }
 
 function LaboratorioTab({ setTab }) {
+  const gotaOn = useGotaStore().enabled;
   const [demand, setDemand] = useState(1500);
   const [tempMult, setTempMult] = useState(100);
   const [efficiency, setEfficiency] = useState(20);
@@ -1733,6 +1824,13 @@ function LaboratorioTab({ setTab }) {
         <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: "0 0 14px" }}>
           Movés las variables y ves cómo cambian el agua y la energía, en vivo. Es una simulación educativa con las mismas constantes que usa el resto de la app, no representa un centro de datos real.
         </p>
+
+        {gotaOn && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "0 0 16px" }}>
+            <span id="gota-dock" aria-hidden="true" style={{ display: "block", width: 64, height: 77, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}><DockBubble /></div>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
           {LAB_PRESETS.map(p => (
@@ -2270,6 +2368,17 @@ const ENDING_DEFS = [
     tagline: "No fuiste el más sostenible ni el más rentable, pero mantuviste todo dentro de rangos razonables. Un resultado prolijo, sin extremos." },
 ];
 
+// Puntaje final (anillos y promedio): premia cada mejora más, para que el 100/100 sea posible
+// (difícil: pide aprovechar casi todos los días, responder bien y atender siempre la demanda).
+function computeFinalScores(state) {
+  const conocimiento = state.knowledge.total > 0 ? Math.round((state.knowledge.correct / state.knowledge.total) * 100) : 50;
+  const gestionHidrica = Math.round(Math.min(100, (state.cooling + state.renewable) / 0.6));
+  const eficiencia = Math.round(Math.min(100, 100 * (0.6 * Math.min(1, state.efficiency / 20) + 0.4 * Math.min(1, state.renewable / 45))));
+  const transparencia = Math.round(Math.min(100, state.reputation * (state.audited ? 1.3 : 1)));
+  const impacto = Math.round(Math.min(100, state.sustainability * 1.5));
+  return { conocimiento, gestionHidrica, eficiencia, transparencia, impacto };
+}
+
 function computeEnding(state, scores) {
   return ENDING_DEFS.find(e => e.match(state, scores)) || ENDING_DEFS[ENDING_DEFS.length - 1];
 }
@@ -2329,23 +2438,27 @@ const GUIDE_STEPS = [
   },
   {
     icon: Wallet, color: "var(--dark-panel)", title: "Los números que vas a cuidar",
-    body: "💧 Agua y ⚡ Energía: cuánto gastaste en total. 💰 Presupuesto: el dinero que tenés para invertir — si llega a cero, no podés hacer más mejoras. 🌱 Sostenibilidad: qué tan responsable fuiste con el ambiente. 🏆 Reputación: cuánto confía la gente en vos. Si la sostenibilidad se mantiene muy baja muchos días seguidos, te llega una multa.",
+    body: "💧 Agua y ⚡ Energía: cuánto gastaste en total. 💰 Presupuesto: el dinero que tenés para invertir — si llega a cero, no podés hacer más mejoras. 🌱 Sostenibilidad: qué tan responsable fuiste con el ambiente. 🏆 Reputación: cuánto confía la gente en vos; sube un poco cada día que atendés toda la demanda y baja si dejás consultas sin responder. Si la sostenibilidad se mantiene muy baja muchos días seguidos, te llega una multa. En Fácil solo se sigue el agua: sin multas ni reputación.",
   },
   {
     icon: ListChecks, color: "var(--acc-blue)", title: "Qué hacés en cada día de partida",
-    body: "Cada día llega una cantidad de consultas para atender. Vos elegís UNA sola cosa: invertir en algo (por ejemplo, mejorar el enfriamiento o sumar energía renovable) o ahorrar ese día sin gastar nada. Ojo: comprar la misma mejora muchas veces la va poniendo cada vez más cara.",
+    body: "Cada día llega una cantidad de consultas para atender. Vos elegís UNA sola cosa: invertir en algo (por ejemplo, mejorar el enfriamiento o sumar energía renovable) o ahorrar ese día sin gastar nada. Comprar la misma mejora muchas veces la va poniendo cada vez más cara. Ojo con los imprevistos: olas de calor, cortes de luz, alertas por contaminación. Cada mejora tiene un ícono, y el mismo ícono aparece en el imprevisto que ayuda a enfrentar. En Fácil, elegir esa mejora evita o reduce el daño; en Normal y Difícil el ícono es solo una pista.",
+  },
+  {
+    icon: Droplet, color: "var(--acc-teal)", title: "Conocé a Gota",
+    body: "Gota es tu guía durante todo el juego. Tocala a ella o a su burbuja y te da otro consejo. Agarrala y soltala sobre una mejora o un número y te explica de qué se trata: te habla desde el borde de la pantalla, sin tapar nada. Cuando la soltás o la volvés a tocar, vuelve sola a su lugar. Si te molesta, la podés apagar con el botón Gota; entonces vuelven los botones ⓘ.",
   },
   {
     icon: Users, color: "var(--acc-orange)", title: "Te vas a cruzar con personajes y sorpresas",
-    body: "Una científica, un CEO, vecinos, un ingeniero, un funcionario y una periodista te van a plantear decisiones en el camino. También aparecen preguntas cortas de 'Mito, Dato o Depende' y casos donde tenés que elegir qué fuente de información es confiable. Todo esto suma o resta a tus números — no hace falta saber la respuesta de antemano, se explica en el momento.",
+    body: "En Normal y Difícil, una científica, un CEO, vecinos, un ingeniero, un funcionario y una periodista te van a plantear decisiones en el camino. También aparecen preguntas cortas de 'Mito, Dato o Depende' y casos donde tenés que elegir qué fuente de información es confiable. Las misiones marcan el rumbo de la partida y se ven debajo de la tarjeta del día y la zona. Todo esto suma o resta a tus números — no hace falta saber la respuesta de antemano, se explica en el momento.",
   },
   {
     icon: Award, color: "var(--dark-panel)", title: "Cómo termina la partida",
-    body: "La partida está dividida en 6 'misiones' con nombre propio que te van guiando. Al final, según cómo jugaste, te toca uno de 6 finales posibles (desde 'Centro de datos sostenible' hasta 'Crisis hídrica') y un ranking con 5 puntajes distintos, no solo un número único.",
+    body: "Al final ves dos tarjetas: tu puntaje de 0 a 100 y tu insignia (Debutante, Aprendiz, Explorador, Gestor responsable o Investigador). Debajo, aros con cada puntaje, cuántos vasos de agua y cargas de celular gastaste, y un detalle desplegable si querés más datos. También te toca un final según cómo jugaste, que podés compartir. Llegar a 100/100 es posible, pero exige cuidar todo a la vez durante toda la partida.",
   },
   {
     icon: Info, color: "var(--acc-blue)", title: "Para arrancar",
-    body: "No hace falta entender todo de una: elegí una zona, después la dificultad 'Fácil', y andá probando. Cada botón te avisa qué efecto va a tener antes de que lo elijas, así que podés leer y decidir con calma en cada día.",
+    body: "No hace falta entender todo de una: elegí una zona y después la dificultad. Fácil (5 días) tiene 3 decisiones y una sola meta, cuidar el agua. Normal (8 días) es el juego completo. Difícil (10 días) suma más inversiones, objetivos y crisis más seguidas. Cada botón te avisa qué efecto va a tener antes de que lo elijas, así que podés leer y decidir con calma.",
   },
 ];
 
@@ -2518,7 +2631,7 @@ const INFO_TEXTS = {
   },
 };
 
-function InfoButton({ onClick, label = "Más información", dark = false, style, gkey }) {
+function InfoButton({ onClick, label = "Más información", dark = false, style, gkey, ghost = false }) {
   return (
     <button
       type="button"
@@ -2526,7 +2639,7 @@ function InfoButton({ onClick, label = "Más información", dark = false, style,
       aria-label={label}
       data-gkey={gkey}
       title={label}
-      className="hi-btn"
+      className={`hi-btn ${ghost ? "hi-ghost-info" : ""}`}
       style={{
         width: 32, height: 32, borderRadius: "50%", padding: 0, cursor: "pointer", flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -3012,6 +3125,58 @@ function buildShareCanvas(d) {
   return c;
 }
 
+// Número que "sube" desde cero al aparecer.
+function CountUp({ value, fmt, delay = 0, duration = 1100 }) {
+  const reduce = typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [n, setN] = useState(reduce ? value : 0);
+  useEffect(() => {
+    if (reduce) { setN(value); return undefined; }
+    let raf = 0; let t0 = 0;
+    const to = setTimeout(() => {
+      const tick = (now) => {
+        if (!t0) t0 = now;
+        const p = Math.min(1, (now - t0) / duration);
+        setN(value * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, delay);
+    return () => { clearTimeout(to); cancelAnimationFrame(raf); };
+  }, [value]);
+  return <>{fmt ? fmt(n) : Math.round(n)}</>;
+}
+
+// Dato grande para el resultado final.
+function BigStat({ icon: Icon, color, bg, value, fmt, label, delay = 0 }) {
+  return (
+    <div className="hi-card" style={{ background: bg, border: "2px solid var(--pop-ink)", boxShadow: "3px 3px 0 var(--pop-ink)", borderRadius: 12, padding: "14px 10px 12px", textAlign: "center", animation: `riseIn .5s ease-out ${delay}ms both` }}>
+      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#fff", border: `2px solid ${color}`, display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}><Icon size={17} color={color} /></div>
+      <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 22, lineHeight: 1.1, color, wordBreak: "break-word" }}><CountUp value={value} fmt={fmt} delay={delay} /></div>
+      <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 3, lineHeight: 1.25 }}>{label}</div>
+    </div>
+  );
+}
+
+// Anillo de puntaje que se llena al aparecer.
+function ScoreRing({ icon: Icon, color, label, value, delay = 0 }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setOn(true), 150 + delay); return () => clearTimeout(t); }, []);
+  const r = 22, c = 2 * Math.PI * r;
+  return (
+    <div style={{ textAlign: "center", animation: `riseIn .5s ease-out ${delay}ms both` }}>
+      <div style={{ position: "relative", width: 56, height: 56, margin: "0 auto" }}>
+        <svg width="56" height="56" viewBox="0 0 60 60" style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+          <circle cx="30" cy="30" r={r} fill="none" stroke="var(--line)" strokeWidth="6" />
+          <circle cx="30" cy="30" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={on ? c * (1 - Math.max(0, Math.min(100, value)) / 100) : c} style={{ transition: `stroke-dashoffset 1s cubic-bezier(.22,.61,.36,1) ${delay}ms` }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon size={17} color={color} /></div>
+      </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 14, color: "var(--ink)", marginTop: 4 }}><CountUp value={value} delay={delay} /></div>
+      <div style={{ fontSize: 11, color: "var(--ink-soft)", lineHeight: 1.2 }}>{label}</div>
+    </div>
+  );
+}
+
 function ShareCard({ state, ending, glasses, zone, diff }) {
   const [msg, setMsg] = useState("");
   const data = {
@@ -3066,6 +3231,11 @@ function Juego({ onActiveChange }) {
   const [showSetup, setShowSetup] = useState(false);
   const [showZoneNumbers, setShowZoneNumbers] = useState(false);
   const [info, setInfo] = useState(null);
+  useEffect(() => {
+    const h = (e) => { if (e.detail && e.detail.key) setInfo({ key: e.detail.key, anchor: e.detail.anchor }); };
+    window.addEventListener("gota-info", h);
+    return () => window.removeEventListener("gota-info", h);
+  }, []);
 
   // El agua acumulada de la partida sube por la pantalla.
   const waterL = state ? state.totalWaterL : 0;
@@ -3156,11 +3326,11 @@ function Juego({ onActiveChange }) {
   if (!zone) {
     return (
       <div>
-        <HomeGota live size={92} />
         <button onClick={() => setShowGuide(true)} className="hi-btn hi-ink-rest"
           style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 16px", marginBottom: 14, borderRadius: 9999, border: "2px solid var(--pop-ink)", background: "var(--pop-or)", color: "#fff", boxShadow: "4px 4px 0 var(--pop-ink)", cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 14, textTransform: "uppercase" }}>
           <span>📖</span> ¿Primera vez? Ver la guía paso a paso
         </button>
+        <HomeGota live size={92} />
 
         <button
           onClick={() => setZone(ZONES[Math.floor(Math.random() * ZONES.length)])}
@@ -3267,7 +3437,7 @@ function Juego({ onActiveChange }) {
             Comprar la misma mejora varias veces la hace más cara. Tu <strong>sostenibilidad</strong> sube o baja según cuánta agua gastás por consulta atendida,
             y tu <strong>reputación</strong> según la demanda que dejás sin atender y las decisiones que tomás. En el camino te vas a cruzar con <strong>personajes</strong> que te plantean decisiones,
             preguntas de <strong>Mito/Dato/Depende</strong> y casos donde tenés que elegir la fuente confiable. Las <strong>misiones</strong> marcan el rumbo de la partida, y si la sostenibilidad
-            queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en uno de 6 finales posibles y un ranking de 5 categorías.
+            queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en un puntaje de 0 a 100, una insignia y un final según cómo jugaste. Si necesitás una mano, tocá a Gota o arrastrala sobre cualquier mejora o número.
           </div>
         )}
         {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
@@ -3331,6 +3501,7 @@ function Juego({ onActiveChange }) {
     let repDelta = 0;
     if (unmet > 0) repDelta -= Math.round(Math.min(8 * diff.repPenalty, (unmet / 200) * diff.repPenalty));
     if (event.id === "goodpress") repDelta += event.reputationBonus;
+    if (diff.tier >= 2 && unmet === 0) repDelta += 1;   // atender todo el día suma confianza
 
     const newSustainability = Math.max(0, Math.min(100, state.sustainability + sustainDelta));
     const newReputation = Math.max(0, Math.min(100, reputation + repDelta));
@@ -3444,19 +3615,46 @@ function Juego({ onActiveChange }) {
     const glasses = (state.totalWaterL * 1000) / GLASS_OF_WATER_ML;
     const phoneCharges = state.totalKWh / PHONE_CHARGE_KWH;
     const achievements = computeAchievements(state);
-    const scores = computeScores(state);
-    const ending = computeEnding(state, scores);
+    const endScores = computeScores(state);
+    const scores = computeFinalScores(state);
+    const ending = computeEnding(state, endScores);
     const avgScore = Math.round((scores.conocimiento + scores.gestionHidrica + scores.eficiencia + scores.transparencia + scores.impacto) / 5);
 
     return (
       <div>
-        <div className="hi-card" style={{ background: ending.bg, borderRadius: 12, padding: "22px 20px", marginBottom: 14, textAlign: "center", border: `1px solid ${ending.color}`, position: "relative", overflow: "hidden" }}>
+        <div className="hi-card" style={{ background: ending.bg, borderRadius: 14, padding: "26px 20px 22px", marginBottom: 14, textAlign: "center", border: `2px solid ${ending.color}`, position: "relative", overflow: "hidden" }}>
           {(ending.id === "innovador" || ending.id === "sostenible") && <Confetti />}
-          <div className="hi-pop" style={{ fontSize: 34, marginBottom: 6 }}>{ending.emoji}</div>
-          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 20, color: ending.color, marginBottom: 6 }}>{ending.title}</div>
-          <p style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.6, margin: "0 auto", maxWidth: 480 }}>{ending.tagline}</p>
+          <div className="hi-pop" style={{ fontSize: 56, lineHeight: 1, marginBottom: 8 }}>{ending.emoji}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 26, lineHeight: 1.15, color: ending.color, marginBottom: 8 }}>{ending.title}</div>
+          <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.55, margin: "0 auto", maxWidth: 440 }}>{ending.tagline}</p>
+          {!easy && (() => {
+            const rk = rankTitle(avgScore).split(" ");
+            const hasEmoji = rk.length > 1 && rk[0].codePointAt(0) > 0x2000;
+            const badge = hasEmoji ? rk[0] : "🏅";
+            const name = hasEmoji ? rk.slice(1).join(" ") : rk.join(" ");
+            const card = { background: "#fff", border: "2px solid var(--pop-ink)", boxShadow: "3px 3px 0 var(--pop-ink)", borderRadius: 12, padding: "10px 8px", minWidth: 0 };
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 360, margin: "16px auto 0" }}>
+                <div style={card}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 30, lineHeight: 1.1, color: "var(--ink)" }}><CountUp value={avgScore} /><span style={{ fontSize: 14, color: "var(--ink-soft)" }}>/100</span></div>
+                  <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>Tu puntaje</div>
+                </div>
+                <div style={card}>
+                  <div style={{ fontSize: 30, lineHeight: 1.1 }}><span className="hi-pop">{badge}</span></div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, textTransform: "uppercase", color: "var(--ink)", lineHeight: 1.15 }}>{name}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>Tu insignia</div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
+        {!easy && gotaOn && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <span id="gota-dock" aria-hidden="true" style={{ display: "block", width: 64, height: 77, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}><DockBubble /></div>
+          </div>
+        )}
         {easy && (
           <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
             {gotaOn ? <span id="gota-dock" data-quiet="1" aria-hidden="true" style={{ display: "block", width: 64, height: 77, flexShrink: 0 }} /> : <GotaMascot mood={state.sustainability >= 50 && state.budget > 0 ? "happy" : "worried"} size={54} />}
@@ -3467,28 +3665,55 @@ function Juego({ onActiveChange }) {
             </div>
           </div>
         )}
-        {!easy && (<>
-        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Ranking de esta partida</span>
-          <span style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{rankTitle(avgScore)} · {avgScore}/100</span>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))", gap: 10, marginBottom: 14 }}>
+          <BigStat icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={state.totalServed} fmt={(v) => numFmt(v, 0)} label="consultas atendidas" delay={0} />
+          <BigStat icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={state.totalWaterL} fmt={(v) => `${numFmt(v, 1)} L`} label="de agua usada" delay={120} />
+          <BigStat icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={state.budget} fmt={(v) => `$${numFmt(v, 0)}`} label="de presupuesto final" delay={240} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 8, marginBottom: 14 }}>
-          <ScoreBar icon={Brain} color="var(--acc-indigo)" label="Conocimiento" value={scores.conocimiento} />
-          <ScoreBar icon={Droplets} color="var(--acc-teal)" label="Gestión hídrica" value={scores.gestionHidrica} />
-          <ScoreBar icon={Zap} color="var(--acc-mustard)" label="Eficiencia energética" value={scores.eficiencia} />
-          <ScoreBar icon={MessageSquare} color="var(--acc-rose)" label="Transparencia" value={scores.transparencia} />
-          <ScoreBar icon={Leaf} color="var(--acc-green)" label="Impacto ambiental" value={scores.impacto} />
-        </div>
-        </>)}
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
-          <StatBox icon={Users} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value={numFmt(state.totalServed, 0)} label="Consultas atendidas" />
-          <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Electricidad total" />
-          <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua total" />
-          <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto final" />
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 14 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 9999, background: "var(--acc-teal-bg)", border: "2px solid var(--pop-ink)", fontSize: 13, color: "var(--ink)" }}>🥛 <strong>≈ {numFmt(glasses, 0)}</strong> vasos de agua</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 9999, background: "var(--acc-blue-bg)", border: "2px solid var(--pop-ink)", fontSize: 13, color: "var(--ink)" }}>📱 <strong>≈ {numFmt(phoneCharges, 0)}</strong> cargas de celular</span>
         </div>
 
+        {!easy && (
+          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 12, padding: "16px 10px 12px", marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2 }}>
+              <ScoreRing icon={Brain} color="var(--acc-indigo)" label="Saber" value={scores.conocimiento} delay={0} />
+              <ScoreRing icon={Droplets} color="var(--acc-teal)" label="Agua" value={scores.gestionHidrica} delay={90} />
+              <ScoreRing icon={Zap} color="var(--acc-mustard)" label="Energía" value={scores.eficiencia} delay={180} />
+              <ScoreRing icon={MessageSquare} color="var(--acc-rose)" label="Confianza" value={scores.transparencia} delay={270} />
+              <ScoreRing icon={Leaf} color="var(--acc-green)" label="Impacto" value={scores.impacto} delay={360} />
+            </div>
+          </div>
+        )}
+
+        {achievements.length > 0 && (
+          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--ink)" }}>Logros de esta partida</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {achievements.map(ach => {
+                const Icon = ach.icon;
+                return (
+                  <span key={ach.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ach.color + "22", color: ach.color, borderRadius: 20, padding: "6px 12px", fontSize: 11.5, fontWeight: 600 }}>
+                    <Icon size={12} /> {ach.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
+        <details className="hi-details" style={{ marginBottom: 14 }}>
+          <summary style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 16px", borderRadius: 9999, border: "2px solid var(--pop-ink)", background: "#fff", fontFamily: "var(--font-display)", fontSize: 13, textTransform: "uppercase", color: "var(--ink)", boxShadow: "3px 3px 0 var(--pop-ink)" }}>
+            <ChevronDown size={14} /> Ver el detalle de la partida
+          </summary>
+          <div style={{ marginTop: 14 }}>
+            <div style={{ marginBottom: 14, maxWidth: 260, marginLeft: "auto", marginRight: "auto", textAlign: "center" }}>
+              <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Electricidad total" />
+            </div>
         {state.totalFines > 0 && (
           <div className="hi-card" style={{ background: "var(--acc-red-bg)", border: "1px solid var(--acc-red)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12.5, color: "var(--acc-red)" }}>
             Pagaste ${numFmt(state.totalFines, 0)} en multas por sostener la sostenibilidad demasiado baja demasiado tiempo.
@@ -3512,25 +3737,8 @@ function Juego({ onActiveChange }) {
           </div>
         )}
 
-        {achievements.length > 0 && (
-          <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 16, marginBottom: 14 }}>
-            <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--ink)" }}>Logros de esta partida</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {achievements.map(ach => {
-                const Icon = ach.icon;
-                return (
-                  <span key={ach.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ach.color + "22", color: ach.color, borderRadius: 20, padding: "6px 12px", fontSize: 11.5, fontWeight: 600 }}>
-                    <Icon size={12} /> {ach.label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {diff.objectives && <ObjectivesPanel state={state} final />}
         {diff.dataPanel && <DataPanel state={state} defaultOpen />}
-
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
           <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--ink)" }}>El agua invisible de tu partida</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
@@ -3552,13 +3760,8 @@ function Juego({ onActiveChange }) {
           </p>
         </div>
 
-        <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 14 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--ink)" }}>Para ponerlo en contexto</div>
-          <p style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, margin: 0 }}>
-            Tu data center gastó el equivalente a <strong style={{ color: "var(--acc-teal)" }}>{numFmt(glasses, 0)} vasos de agua</strong> y
-            {" "}<strong style={{ color: "var(--acc-blue)" }}>{numFmt(phoneCharges, 0)} cargas de celular</strong> a lo largo de {diff.days} días atendiendo consultas de IA en dificultad {diff.label.toLowerCase()}, en {zone.label}.
-          </p>
-        </div>
+          </div>
+        </details>
 
         <ShareCard state={state} ending={ending} glasses={glasses} zone={zone} diff={diff} />
 
@@ -3602,6 +3805,25 @@ function Juego({ onActiveChange }) {
         </div>
       </div>
 
+      {!easy && (
+      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginBottom: 12, borderLeft: "4px solid var(--acc-purple)" }}>
+        {state.missionNote && (
+          <div style={{ marginBottom: 8, fontSize: 12, color: state.missionNote.met ? "var(--acc-green)" : "var(--ink-soft)" }}>
+            {state.missionNote.met ? "✅" : "➖"} Misión "{state.missionNote.title}" {state.missionNote.met ? "cumplida" : "no cumplida"}
+            {state.missionNote.met ? ` — ${state.missionNote.bonusLabel}` : ""}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <Compass size={14} color="var(--acc-purple)" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--acc-purple)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Misión {state.currentMissionIndex + 1}/{MISSION_DEFS.length} · {MISSION_DEFS[state.currentMissionIndex].title}
+          </span>
+        </div>
+        <p style={{ fontSize: 12.5, color: "var(--ink)", margin: "0 0 4px", lineHeight: 1.5 }}>{MISSION_DEFS[state.currentMissionIndex].narrative}</p>
+        <p style={{ fontSize: 11, color: "var(--ink-soft)", margin: 0 }}>Objetivo: {MISSION_DEFS[state.currentMissionIndex].hint}</p>
+      </div>
+      )}
+
       {/* Mapa del centro de datos: guardado para uso futuro. Para mostrarlo: <DataCenterMap state={state} /> */}
 
       {!state.dayResult && state.demand != null && (() => {
@@ -3612,7 +3834,7 @@ function Juego({ onActiveChange }) {
         const missing = Math.max(0, state.demand - capacityToday);
         return (
           <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "14px 16px", marginBottom: 12, position: "relative", border: `1px solid ${missing > 0 ? "var(--acc-red)" : "var(--line)"}` }}>
-            <InfoButton gkey={"demand"} onClick={(el) => setInfo({ key: "demand", anchor: el })} label="Más información sobre consultas y capacidad" style={{ position: "absolute", top: 10, right: 10 }} />
+            <InfoButton gkey={"demand"} ghost={gotaOn} onClick={(el) => setInfo({ key: "demand", anchor: el })} label="Más información sobre consultas y capacidad" style={{ position: "absolute", top: 10, right: 10 }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, paddingRight: 28 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}><Users size={12} /> Consultas que llegan hoy</div>
@@ -3634,9 +3856,9 @@ function Juego({ onActiveChange }) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Tus números hasta ahora</span>
-        <InfoButton gkey={"stats"} onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
+        <InfoButton gkey={"stats"} ghost={gotaOn} onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${diff.showEnergy ? 3 : 2}, 1fr)`, gap: 8, marginBottom: 10 }}>
+      <div data-ginfo="stats" style={{ display: "grid", gridTemplateColumns: `repeat(${diff.showEnergy ? 3 : 2}, 1fr)`, gap: 8, marginBottom: 10 }}>
         <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua acumulada" delay={0} />
         {diff.showEnergy && <StatBox icon={Zap} color="var(--acc-mustard)" bg="var(--acc-mustard-bg)" value={formatEnergy(state.totalKWh * 1000)} label="Energía acumulada" delay={40} />}
         <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto" delay={80} />
@@ -3646,11 +3868,11 @@ function Juego({ onActiveChange }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div style={{ position: "relative" }}>
           <Gauge value={state.sustainability} color={gradeFor(state.sustainability).color} label="Sostenibilidad" />
-          <InfoButton gkey={"sostenibilidad"} onClick={(el) => setInfo({ key: "sostenibilidad", anchor: el })} label="Más información sobre la sostenibilidad" style={{ position: "absolute", top: 8, right: 8 }} />
+          <InfoButton gkey={"sostenibilidad"} ghost={gotaOn} onClick={(el) => setInfo({ key: "sostenibilidad", anchor: el })} label="Más información sobre la sostenibilidad" style={{ position: "absolute", top: 8, right: 8 }} />
         </div>
         <div style={{ position: "relative" }}>
           <Gauge value={state.reputation} color={reputationGrade(state.reputation).color} label="Reputación" />
-          <InfoButton gkey={"reputacion"} onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
+          <InfoButton gkey={"reputacion"} ghost={gotaOn} onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
         </div>
       </div>
       )}
@@ -3721,7 +3943,7 @@ function Juego({ onActiveChange }) {
 
       {state.event && state.event.kind === "sources" && !state.eventChoiceResolved && state.event.scenario && (
         <div className="hi-card" style={{ background: "var(--acc-indigo-bg, var(--paper-soft))", border: `1px solid ${state.event.character ? state.event.character.color : "var(--acc-rose)"}`, borderRadius: 8, padding: "12px 14px", marginBottom: 12, position: "relative" }}>
-          <InfoButton gkey={"sources"} onClick={(el) => setInfo({ key: "sources", anchor: el })} label="Cómo reconocer una fuente confiable" style={{ position: "absolute", top: 10, right: 10 }} />
+          <InfoButton gkey={"sources"} ghost={gotaOn} onClick={(el) => setInfo({ key: "sources", anchor: el })} label="Cómo reconocer una fuente confiable" style={{ position: "absolute", top: 10, right: 10 }} />
           {state.event.character ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <CharacterAvatar character={state.event.character} />
@@ -3795,7 +4017,7 @@ function Juego({ onActiveChange }) {
                     <span className="hi-pick-check" aria-hidden="true" style={{ position: "absolute", top: -8, left: -8, width: 22, height: 22, borderRadius: "50%", background: action.color, color: "#fff", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, lineHeight: 1 }}>✓</span>
                   )}
                 </button>
-                <InfoButton gkey={action.id} onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+                <InfoButton gkey={action.id} ghost={gotaOn} onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
                 </div>
               );
             })}
@@ -3821,7 +4043,7 @@ function Juego({ onActiveChange }) {
               <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>No invertís nada hoy: guardás el presupuesto para más adelante.</div>
             </div>
           </button>
-          <InfoButton gkey={"save"} onClick={(el) => setInfo({ key: "save", anchor: el })} label="Más información sobre pasar el día y ahorrar" style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+          <InfoButton gkey={"save"} ghost={gotaOn} onClick={(el) => setInfo({ key: "save", anchor: el })} label="Más información sobre pasar el día y ahorrar" style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
           </div>
 
           <button
@@ -3914,24 +4136,7 @@ function Juego({ onActiveChange }) {
         </div>
       )}
 
-      {easy ? (<><GoalStrip state={state} /><div style={{ marginTop: 12 }}><CareBar value={state.sustainability} label="Agua cuidada" /></div></>) : (
-      <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginTop: 12, marginBottom: 0, borderLeft: "4px solid var(--acc-purple)" }}>
-        {state.missionNote && (
-          <div style={{ marginBottom: 8, fontSize: 12, color: state.missionNote.met ? "var(--acc-green)" : "var(--ink-soft)" }}>
-            {state.missionNote.met ? "✅" : "➖"} Misión "{state.missionNote.title}" {state.missionNote.met ? "cumplida" : "no cumplida"}
-            {state.missionNote.met ? ` — ${state.missionNote.bonusLabel}` : ""}
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-          <Compass size={14} color="var(--acc-purple)" />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--acc-purple)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Misión {state.currentMissionIndex + 1}/{MISSION_DEFS.length} · {MISSION_DEFS[state.currentMissionIndex].title}
-          </span>
-        </div>
-        <p style={{ fontSize: 12.5, color: "var(--ink)", margin: "0 0 4px", lineHeight: 1.5 }}>{MISSION_DEFS[state.currentMissionIndex].narrative}</p>
-        <p style={{ fontSize: 11, color: "var(--ink-soft)", margin: 0 }}>Objetivo: {MISSION_DEFS[state.currentMissionIndex].hint}</p>
-      </div>
-      )}
+      {easy && (<><GoalStrip state={state} /><div data-ginfo="sostenibilidad" style={{ marginTop: 12 }}><CareBar value={state.sustainability} label="Agua cuidada" /></div></>)}
 
       {state.history.length > 0 && (
         <div style={{ marginTop: 12 }}>
@@ -3965,14 +4170,14 @@ const SOURCES = [
   { title: "El centro de datos de la Patagonia y la frontera del agua digital", org: "Sed de Datos — análisis propio, sección Patagonia", url: "https://seddedatos.com.ar/", desc: "Estimación propia de nuestro sitio: ≈25.000 L de agua de refrigeración por día por cada MW de capacidad instalada. Equivale a ≈1 L de agua directa por kWh (25.000 L ÷ 24.000 kWh por MW por día), del mismo orden que los 0,26 mL por 0,24 Wh de Google. Mide el agua directa de refrigeración escalada por capacidad, no el agua de generar la electricidad (esa se calcula aparte, con 1,5 L/kWh)." },
   { title: "Making AI Less 'Thirsty'", org: "Li, Yang, Islam & Ren — UC Riverside (2023), documento técnico en inglés", url: "https://arxiv.org/abs/2304.03271", desc: "El estudio académico que mide en detalle la huella hídrica directa e indirecta de entrenar y usar modelos como GPT-3 — la base de las cifras de agua por consulta que usa la Calculadora." },
   { title: "ChatGPT users send 2.5 billion prompts a day", org: "TechCrunch (2025) — en inglés", url: "https://techcrunch.com/2025/07/21/chatgpt-users-send-2-5-billion-prompts-a-day/", desc: "La cifra de escala global que da contexto a por qué un gasto mínimo por consulta termina pesando tanto: 2.500 millones de mensajes diarios, según datos de OpenAI." },
-  { title: "¿Cuánta energía consume la IA de Google? Hicimos los cálculos", org: "Blog oficial de Google (2025)", url: "https://blog.google/intl/es-419/actualizaciones-de-producto/en-la-nube/cuanta-energia-consume-la-ia-de-google-hicimos-los-calculos/", desc: "El anuncio oficial de Google, en español: metodología y cifras (0,24 Wh y 0,26 mL de agua directa por prompt mediano en Gemini)." },
+  { title: "¿Cuánta energía consume la IA de Google? Hicimos los cálculos", org: "Blog oficial de Google (2025)", url: "https://blog.google/intl/es-419/actualizaciones-de-producto/en-la-nube/cuanta-energia-consume-la-ia-de-google-hicimos-los-calculos/", desc: "El anuncio oficial de Google, en español: metodología y cifras (0,24 Wh y 0,26 mL de agua directa por prompt de texto en Gemini; el blog lo llama «promedio» y el paper técnico usa la mediana)." },
   { title: "Measuring the environmental impact of delivering AI at Google Scale", org: "arXiv 2508.15734 (2025) — documento técnico en inglés", url: "https://arxiv.org/abs/2508.15734v1", desc: "El paper técnico completo detrás del anuncio de Google, con el detalle de la metodología. Solo está disponible en inglés." },
   { title: "Cinco gotas de agua: el costo que dice Google tiene un prompt en Gemini", org: "Digital Trends en Español (2025)", url: "https://es.digitaltrends.com/android/cinco-gotas-de-agua-el-costo-que-dice-google-tiene-un-prompt-en-gemini/", desc: "Cobertura en español que suma las críticas de investigadores (Shaolei Ren, Alex de Vries-Gao) sobre lo que el estudio de Google no cuenta: el agua indirecta." },
   { title: "Google: el indicador Gemini medio utiliza 0,24 vatios-hora de energía y consume 0,26 ml de agua", org: "Data Center Dynamics en español (2025)", url: "https://www.datacenterdynamics.com/es/noticias/google-el-indicador-gemini-medio-utiliza-024-vatios-hora-de-energ%C3%ADa-y-consume-026-ml-de-agua/", desc: "Edición en español de Data Center Dynamics: compara las cifras de Google con las de OpenAI." },
   { title: "Consejos para investigar el consumo masivo de agua por parte de los centros de datos", org: "Global Investigative Journalism Network, GIJN (en español)", url: "https://gijn.org/es/articulos/investigar-consumo-masivo-de-agua-por-centros-de-datos/", desc: "Explica en español la diferencia entre agua directa e indirecta en centros de datos de EE.UU., con los datos del Lawrence Berkeley National Laboratory." },
-  { title: "La huella hídrica invisible de la inteligencia artificial", org: "Consejo Latinoamericano de Ética en Tecnología (2026)", url: "https://somosclet.org/la-huella-hidrica-invisible-de-la-inteligencia-artificial/", desc: "Análisis en español sobre agua directa e indirecta, con los mismos datos del Lawrence Berkeley (800 mil millones de litros indirectos en 2023)." },
+  { title: "La huella hídrica invisible de la inteligencia artificial", org: "Consejo Latinoamericano de Ética en Tecnología (2026)", url: "https://somosclet.org/la-huella-hidrica-invisible-de-la-inteligencia-artificial/", desc: "Análisis en español sobre agua directa e indirecta, con los datos del Lawrence Berkeley National Laboratory: casi 800 mil millones de litros de agua indirecta en 2023, solo para los centros de datos de EE. UU.." },
   { title: "Miden el impacto ecológico de usar ChatGPT-3: 2 litros de agua por 10 a 50 consultas", org: "LA NACIÓN (2024)", url: "https://www.lanacion.com.ar/tecnologia/miden-el-impacto-ecologico-de-usar-chatgpt-3-2-litros-de-agua-por-10-a-50-consultas-nid18102024/", desc: "Cobertura en español del estudio 'Making AI Less Thirsty' sobre el entrenamiento de GPT-3: unos 700.000 litros de agua directa." },
-  { title: "¿Cuánta agua consume realmente la IA?", org: "Nation.es (2026)", url: "https://nation.es/cuanta-agua-consume-realmente-la-ia/", desc: "Compara en español las cifras de Google, Mistral y la Universidad de California Riverside, y explica por qué no son directamente comparables entre sí." },
+  { title: "¿Cuánta agua consume realmente la IA?", org: "Nation AI (nation.es, 2026)", url: "https://nation.es/cuanta-agua-consume-realmente-la-ia/", desc: "Compara en español las cifras de Google, Mistral y la Universidad de California Riverside, y explica por qué no son directamente comparables entre sí." },
   { title: "Guerra de recursos: el megaproyecto de OpenAI por US$ 25.000M tensiona el agua, la energía y el cobre en Argentina", org: "Acero y Roca (2026)", url: "https://aceroyroca.com/2026/08/08/noticias-openai-stargate-data-center-cobre-rigi-argentina/", desc: "Cobertura en español de Stargate Argentina (Neuquén, hasta 500 MW), con la estimación de 7,1 m³ de agua por cada MWh (directa e indirecta combinadas) para este tipo de mega centros de datos. En SequIA se usa solo como escenario de referencia: la parte indirecta se calcula con 1,5 L/kWh." },
 ];
 
