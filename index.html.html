@@ -290,6 +290,12 @@ function App() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
+  // Gota orienta en las pantallas fuera del juego (dentro del juego lo hace Juego)
+  const outCtx = tab === "laboratorio"
+    ? { key: "lab", mood: "happy", sticky: false, react: null, msg: "Acá jugás con los números: movés los controles y ves cómo cambia el agua y la electricidad.", tips: ["Las cifras de agua indirecta dependen de la electricidad que se usa.", ...GOTA_BASE_TIPS] }
+    : { key: "__inicio" };
+  useGota(tab === "juego" ? { key: "__juego" } : outCtx);
+
   const [showTop, setShowTop] = useState(false);
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 400);
@@ -316,6 +322,9 @@ function App() {
   return (
     <div style={styles.app}>
       <GlobalStyle />
+      <DotGrid />
+      <CustomCursor />
+      <GotaGuide hidden={tab === "inicio"} />
       <BackgroundFX />
       <div style={styles.shell}>
         <Header onInstallClick={() => setShowInstallGuide(true)} onHomeClick={goHome} compact={tab !== "inicio"} />
@@ -336,7 +345,7 @@ function App() {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           aria-label="Volver arriba"
           style={{
-            position: "fixed", bottom: 20, right: 20, width: 44, height: 44, borderRadius: "50%",
+            position: "fixed", bottom: 20, left: 20, width: 44, height: 44, borderRadius: "50%",
             background: "var(--acc-blue)", border: "none", color: "var(--on-accent)", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: "0 6px 18px rgba(20,24,31,0.18)", zIndex: 50
@@ -464,6 +473,25 @@ function GlobalStyle() {
       .mk-orange { --mk-bg: var(--pop-or); }
       .mk-cyan { --mk-bg: var(--pop-cyan); }
       .mk-blue { --mk-bg: var(--acc-blue); color: #fff; }
+      /* ===== Cursor propio y grilla de puntos interactiva (mismo efecto del sitio) ===== */
+      .sd-cur { position: fixed; left: 0; top: 0; z-index: 2147483000; pointer-events: none; width: 12px; height: 12px; box-sizing: border-box; border-radius: 9999px; background: #FF6A00; border: 2px solid #14181F; opacity: 0; transform: translate3d(-100px, -100px, 0) translate(-50%, -50%); transition: width .2s cubic-bezier(.16,1,.3,1), height .2s cubic-bezier(.16,1,.3,1), background-color .2s, border-color .2s, box-shadow .2s, opacity .12s; }
+      .sd-cur.on { opacity: 1; }
+      .sd-cur.is-native { opacity: 0; }
+      .sd-cur.is-down { width: 8px; height: 8px; }
+      .sd-cur.is-link { width: 46px; height: 46px; background: transparent; border: 2.5px solid #FF6A00; box-shadow: 0 0 0 2px #14181F; }
+      .sd-cur.is-link.is-down { width: 36px; height: 36px; }
+      html.has-cur body *:not(input[type=text]):not(input[type=number]):not(input[type=search]):not(textarea):not(select):not([contenteditable]) { cursor: none !important; }
+      @media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) { .sd-cur { display: none !important; } }
+      /* ===== Gota guía ===== */
+      @keyframes gotaTalk { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+      .hi-talk { transform-box: fill-box; transform-origin: 50% 50%; animation: gotaTalk .28s ease-in-out infinite; }
+      @keyframes gotaLand { 0% { transform: scale(1.18, .78); } 60% { transform: scale(.94, 1.06); } 100% { transform: scale(1, 1); } }
+      .hi-gota-land { animation: gotaLand .45s ease-out; transform-origin: 50% 100%; }
+      @keyframes gotaHeld { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+      .hi-gota-held { animation: gotaHeld .5s ease-in-out infinite; transform-origin: 50% 0%; }
+      @keyframes bubbleIn { from { opacity: 0; transform: translateY(6px) scale(.92); } to { opacity: 1; transform: none; } }
+      .hi-gbubble { animation: bubbleIn .25s cubic-bezier(.2,.8,.3,1.2) both; }
+      @media (prefers-reduced-motion: reduce) { .hi-talk, .hi-gota-land, .hi-gota-held, .hi-gbubble { animation: none; } }
       /* ===== Botones con la animación del sitio: barrido de color, salto al pasar y "presionado" ===== */
       .hi-btn[style*="box-shadow"], .hi-btn.hi-ink-rest { position: relative; isolation: isolate; --sw-fill: rgba(255,255,255,.26); --sw-hov: currentColor;
         transition: transform .25s cubic-bezier(.22,.61,.36,1), box-shadow .25s cubic-bezier(.22,.61,.36,1), color 0s linear .2s; }
@@ -563,6 +591,496 @@ function GlobalStyle() {
 
 // El agua acumulada de la partida sube por la pantalla (misma idea que la
 // calculadora del sitio). El nivel lo escribe Juego en --water-lv (0 a 1).
+// Grilla de puntos interactiva (la misma del sitio): los puntos crecen cerca del puntero o del dedo.
+function DotGrid() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext("2d");
+    const SPACING = 22, BASE_R = 1.4, MAX_R = 3.0, RADIUS = 130;
+    const still = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    let dots = [], width = 0, height = 0, raf = 0, touchTimer = 0;
+    const mouse = { x: -9999, y: -9999 };
+    const build = () => {
+      const dpr = window.devicePixelRatio || 1;
+      width = window.innerWidth; height = window.innerHeight;
+      canvas.width = width * dpr; canvas.height = height * dpr;
+      canvas.style.width = width + "px"; canvas.style.height = height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dots = [];
+      for (let y = SPACING / 2; y < height; y += SPACING) for (let x = SPACING / 2; x < width; x += SPACING) dots.push({ x, y, r: BASE_R });
+    };
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#2952E3";
+      let moving = false;
+      for (const d of dots) {
+        const dx = d.x - mouse.x, dy = d.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const target = dist < RADIUS ? BASE_R + (MAX_R - BASE_R) * (1 - dist / RADIUS) : BASE_R;
+        d.r += (target - d.r) * 0.15;
+        if (Math.abs(target - d.r) > 0.01) moving = true;
+        ctx.globalAlpha = dist < RADIUS ? 0.22 + 0.15 * (1 - dist / RADIUS) : 0.22;
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+      }
+      raf = (moving && !still) ? requestAnimationFrame(draw) : 0;
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(draw); };
+    const onMove = (e) => { mouse.x = e.clientX; mouse.y = e.clientY; kick(); };
+    const onDown = (e) => {
+      // en pantallas táctiles el efecto aparece al tocar y se apaga solo
+      mouse.x = e.clientX; mouse.y = e.clientY; kick();
+      if (e.pointerType && e.pointerType !== "mouse") { clearTimeout(touchTimer); touchTimer = setTimeout(() => { mouse.x = -9999; mouse.y = -9999; kick(); }, 700); }
+    };
+    const onLeave = () => { mouse.x = -9999; mouse.y = -9999; kick(); };
+    const onResize = () => { build(); kick(); };
+    build(); draw();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
+    return () => {
+      cancelAnimationFrame(raf); clearTimeout(touchTimer);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerdown", onDown);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
+    };
+  }, []);
+  return <canvas ref={ref} aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />;
+}
+
+// Cursor propio (solo mouse): punto naranja que sigue al puntero y se vuelve anillo sobre lo clickeable.
+function CustomCursor() {
+  useEffect(() => {
+    let cleanup = () => {};
+    try {
+      if (!window.matchMedia || !window.matchMedia("(hover: hover) and (pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+      const el = document.createElement("div");
+      el.className = "sd-cur"; el.setAttribute("aria-hidden", "true");
+      document.body.appendChild(el);
+      const LINK = 'a[href],button,summary,label[for],[role="button"],input[type="range"],input[type="checkbox"],input[type="radio"],select';
+      const NATIVE = 'input[type="text"],input[type="number"],input[type="search"],textarea,[contenteditable]';
+      let x = -100, y = -100, tx = -100, ty = -100, cx = 0, cy = 0, raf = 0, seen = false, sc = 0;
+      const loop = () => {
+        x += (tx - x) * 0.5; y += (ty - y) * 0.5;
+        el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
+        raf = (Math.abs(tx - x) > 0.1 || Math.abs(ty - y) > 0.1) ? requestAnimationFrame(loop) : 0;
+      };
+      const state = (t) => {
+        const nat = !!(t && t.closest && t.closest(NATIVE));
+        el.classList.toggle("is-native", nat);
+        el.classList.toggle("is-link", !nat && !!(t && t.closest && t.closest(LINK)));
+      };
+      const onMove = (e) => {
+        if (e.pointerType && e.pointerType !== "mouse") return;
+        cx = e.clientX; cy = e.clientY; tx = cx; ty = cy;
+        if (!seen) { seen = true; x = tx; y = ty; document.documentElement.classList.add("has-cur"); }
+        el.classList.add("on"); state(e.target);
+        if (!raf) raf = requestAnimationFrame(loop);
+      };
+      const onDown = () => el.classList.add("is-down");
+      const onUp = () => el.classList.remove("is-down");
+      const onOut = () => el.classList.remove("on");
+      const onIn = () => { if (seen) el.classList.add("on"); };
+      const onScroll = () => { if (!seen || sc) return; sc = requestAnimationFrame(() => { sc = 0; state(document.elementFromPoint(cx, cy)); }); };
+      document.addEventListener("pointermove", onMove, { passive: true });
+      document.addEventListener("pointerdown", onDown, { passive: true });
+      document.addEventListener("pointerup", onUp, { passive: true });
+      document.documentElement.addEventListener("pointerleave", onOut);
+      document.documentElement.addEventListener("pointerenter", onIn);
+      window.addEventListener("scroll", onScroll, { passive: true });
+      cleanup = () => {
+        cancelAnimationFrame(raf); cancelAnimationFrame(sc);
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerdown", onDown);
+        document.removeEventListener("pointerup", onUp);
+        document.documentElement.removeEventListener("pointerleave", onOut);
+        document.documentElement.removeEventListener("pointerenter", onIn);
+        window.removeEventListener("scroll", onScroll);
+        document.documentElement.classList.remove("has-cur");
+        el.remove();
+      };
+    } catch (err) { /* el cursor propio es opcional */ }
+    return () => cleanup();
+  }, []);
+  return null;
+}
+
+// ---------- Gota guía: la mascota flotante que acompaña, reacciona y orienta ----------
+const gota = (() => {
+  const subs = new Set();
+  let cur = { key: "", msg: "", tips: [], mood: "happy", react: null, sticky: false, n: 0 };
+  let enabled = true, stage = false, suppress = false, held = false;
+  try { enabled = window.localStorage.getItem("sequia-gota") !== "off"; } catch (e) { /* sin almacenamiento */ }
+  const emit = () => subs.forEach(fn => fn());
+  return {
+    get cur() { return cur; },
+    get enabled() { return enabled; },
+    get stage() { return stage; },
+    get suppress() { return suppress; },
+    get held() { return held; },
+    setHeld(v) { if (held !== v) { held = v; emit(); } },
+    setSuppress(v) { if (suppress !== v) { suppress = v; emit(); } },
+    setStage(v) { if (stage !== v) { stage = v; emit(); } },
+    setEnabled(v) { enabled = v; try { window.localStorage.setItem("sequia-gota", v ? "on" : "off"); } catch (e) { /* sin almacenamiento */ } emit(); },
+    set(next) { if (!next || next.key === cur.key) return; if (!next.msg) { cur = { ...cur, key: next.key }; return; } cur = { ...cur, ...next, main: next.tips !== undefined ? next.msg : cur.main, n: cur.n + 1 }; emit(); },
+    subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
+    nextTip() {
+      // rotación: el mensaje principal de la pantalla + los consejos; siempre vuelve a aparecer
+      const base = cur.tips && cur.tips.length ? cur.tips : GOTA_BASE_TIPS;
+      const list = [...new Set([cur.main, ...base].filter(Boolean))];
+      const idx = list.indexOf(cur.msg);
+      const t = list[(idx + 1) % list.length];
+      this._i = (this._i || 0) + 1;
+      this.set({ key: `tip-${cur.n}-${this._i}`, msg: t, sticky: false, react: null });
+    },
+  };
+})();
+
+function useGotaStore() {
+  const [, force] = useState(0);
+  useEffect(() => gota.subscribe(() => force(n => n + 1)), []);
+  return { cur: gota.cur, enabled: gota.enabled, stage: gota.stage, suppress: gota.suppress, held: gota.held };
+}
+
+// Cada pantalla le avisa a Gota qué está pasando; solo cambia cuando cambia la "key".
+function useGota(next) {
+  useEffect(() => { gota.set(next); }, [next.key]);
+}
+
+const GOTA_BASE_TIPS = [
+  "Podés arrastrarme y soltarme donde quieras. ¡Probá!",
+  "Tocame cuando quieras un consejo.",
+];
+
+function buildGotaCtx({ zone, diffKey, state, chosen }) {
+  if (!zone) return { key: "zone", mood: "happy", sticky: false, react: null,
+    msg: "Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta.",
+    tips: ["Tocá la «i» de cada zona si querés ver los números.", ...GOTA_BASE_TIPS.filter(t => !t.startsWith("Tocame")), "Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta."] };
+  if (!diffKey) return { key: "diff", mood: "happy", sticky: false, react: null,
+    msg: "Ahora elegí la dificultad. Fácil es ideal para empezar: pocos datos y yo te voy guiando.",
+    tips: ["Normal suma personajes, trivia y más decisiones.", "Difícil agrega objetivos y más imprevistos.", ...GOTA_BASE_TIPS] };
+  if (!state) return { key: "briefing", mood: "happy", sticky: false, react: null,
+    msg: "¡Listo! Leé la consigna y tocá el botón para empezar cuando quieras.", tips: GOTA_BASE_TIPS };
+  const diff = state.diff, easy = diff.tier === 1;
+  const mood = gotaMood(state.sustainability);
+  const sticky = easy;
+  if (state.finished) return { key: "end", mood, sticky: true, react: state.sustainability >= 50 ? "good" : null,
+    msg: "¡Terminaste! Mirá cómo te fue y compartí tu resultado con el botón azul.",
+    tips: ["Podés jugar de nuevo con otra zona o dificultad y comparar.", "Compartir tu resultado ayuda a que más gente piense en el agua de la IA."] };
+  const r = state.dayResult;
+  if (r) {
+    const good = r.sustainDelta > 0 && r.unmet === 0, bad = r.sustainDelta < 0 || r.unmet > 0;
+    return { key: `res-${state.day}`, mood, sticky, react: good ? "good" : bad ? "bad" : null, msg: gotaSays(state),
+      tips: ["Cuando termines de mirar, tocá «Día siguiente».", EASY_TIPS[(r.day - 1) % EASY_TIPS.length], ...(r.unmet > 0 ? ["Si falta capacidad, «Más servidores» te ayuda a atender más consultas."] : [])] };
+  }
+  if (state.event && (state.event.kind === "choice" || state.event.kind === "sources") && !state.eventChoiceResolved) return { key: `ev-${state.day}`, mood, sticky, react: null,
+    msg: "Hay una decisión importante. Leé las opciones: cada una tiene sus consecuencias.", tips: ["No hay respuesta perfecta: pensá en el agua, el dinero y la reputación."] };
+  if (chosen) {
+    if (chosen === "save") return { key: `pick-${state.day}-save`, mood, sticky, react: null,
+      msg: "Ahorrar guarda dinero para más adelante. Si te cierra, tocá «Confirmar día».", tips: ["Ahorrar un día está bien si el próximo tenés una mejor inversión."] };
+    const def = GAME_ACTION_DEFS.find(a => a.id === chosen);
+    if (def) {
+      const cost = costFor(def, state);
+      const label = easy && def.easyLabel ? def.easyLabel : def.label;
+      const desc = easy && def.easyDesc ? def.easyDesc : def.desc;
+      if (state.budget < cost) return { key: `pick-${state.day}-${chosen}`, mood: "worried", sticky, react: "bad",
+        msg: `${label} cuesta $${numFmt(cost, 0)} y no te alcanza. Probá otra mejora o ahorrá el día.`, tips: ["Las mejoras más baratas también suman."] };
+      return { key: `pick-${state.day}-${chosen}`, mood, sticky, react: "good",
+        msg: `${label}: ${desc} Cuesta $${numFmt(cost, 0)}. Si te cierra, tocá «Confirmar día».`, tips: ["Podés cambiar de idea: tocá otra mejora antes de confirmar."] };
+    }
+  }
+  const mod = state.event && state.event.kind === "modifier" && state.event.id !== "calm";
+  const tips = [];
+  if (state.sustainability < 45) tips.push("El agua está en riesgo: probá enfriar mejor o usar energía limpia.");
+  if (state.budget < 1500) tips.push("Te queda poco presupuesto: cuidá cada inversión.");
+  if (state.totalUnmet > 0) tips.push("Hubo consultas sin atender: ampliar capacidad ayuda.");
+  tips.push("Tocá la «i» de una mejora para saber qué hace.", ...GOTA_BASE_TIPS);
+  let msg = state.day === 1 ? "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño." : "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
+  if (mod) msg = `${state.event.emoji} ${state.event.label}: ${state.event.desc}` + (state.diff && state.diff.tier === 1 && EVENT_HINT[state.event.id] ? ` ${EVENT_HINT[state.event.id]}` : "");
+  else if (state.sustainability < 35) msg = "El agua está en riesgo. Una mejora de enfriamiento o energía limpia ayudaría.";
+  return { key: `day-${state.day}`, mood: state.sustainability < 35 ? "worried" : mood, sticky, react: mod ? "bad" : null, msg, tips };
+}
+
+function GotaGuide({ hidden, chase = false }) {
+  const { cur, enabled, stage, suppress } = useGotaStore();
+  const W = 64, H = 77;
+  const reduce = typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [x, setX] = useState(null);
+  const [y, setY] = useState(null);
+  const [falling, setFalling] = useState(false);
+  const [landing, setLanding] = useState(false);
+  const yr = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState(0);
+  const [look, setLook] = useState({ x: 0, y: 0 });
+  const [blink, setBlink] = useState(false);
+  const [held, setHeld] = useState(false);
+  const [lean, setLean] = useState(0);
+  const [react, setReact] = useState(null);
+  const xr = useRef(null);       // posición actual
+  const tx = useRef(null);       // posición a la que va
+  const moved = useRef(0);       // última vez que se movió el puntero (para pasear solo)
+  const drag = useRef(null);
+  const ptr = useRef(null);
+  const loopRef = useRef(0);
+  const idle = useRef(0);
+  const tipI = useRef(0);
+  const openRef = useRef(false);
+  openRef.current = open;
+  const chaseRef = useRef(false);
+  chaseRef.current = chase;
+  const ct = useRef(null);       // destino mientras persigue al cursor
+  const chaseLoop = useRef(0);
+
+  const maxX = () => Math.max(6, window.innerWidth - W - 6);
+  const clampX = (v) => Math.max(6, Math.min(maxX(), v));
+  const floor = () => window.innerHeight - H - 16;
+  const dockRect = () => { const el = document.getElementById("gota-dock"); return el ? el.getBoundingClientRect() : null; };
+  const homeX = () => { const d = dockRect(); return d ? d.left + (d.width - W) / 2 : Math.max(6, window.innerWidth - W - 14); };
+  const homeY = () => { const d = dockRect(); return d ? d.top + (d.height - H) / 2 : floor(); };
+  const [vis, setVis] = useState(true);
+  const [docked, setDocked] = useState(false);
+  const dockedRef = useRef(false);
+  const visRef = useRef(true);
+  const fallingRef = useRef(false);
+  fallingRef.current = falling;
+
+  // movimiento suave: Gota se desliza hacia su destino y se inclina un poco según la velocidad
+  const run = () => {
+    if (loopRef.current) return;
+    const step = () => {
+      loopRef.current = 0;
+      if (xr.current == null || tx.current == null) return;
+      const d = tx.current - xr.current;
+      if (reduce || Math.abs(d) < 0.4) { xr.current = tx.current; setX(xr.current); setLean(0); return; }
+      const v = d * 0.07;
+      xr.current += v;
+      setX(xr.current); setLean(Math.max(-9, Math.min(9, v * 1.4)));
+      loopRef.current = requestAnimationFrame(step);
+    };
+    loopRef.current = requestAnimationFrame(step);
+  };
+  const goTo = (v) => { tx.current = clampX(v); run(); };
+
+  // en el juego Gota persigue al cursor y se queda cerca (abajo a la derecha, o a la izquierda si está en el borde)
+  const chaseGo = () => {
+    if (chaseLoop.current) return;
+    const step = () => {
+      chaseLoop.current = 0;
+      if (!chaseRef.current || drag.current || !ct.current || xr.current == null) return;
+      const dx = ct.current.x - xr.current, dy = ct.current.y - yr.current;
+      const near = Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5;
+      if (reduce || near) { xr.current = ct.current.x; yr.current = ct.current.y; }
+      else { xr.current += dx * 0.11; yr.current += dy * 0.11; }
+      setX(xr.current); setY(yr.current);
+      if (!near && !reduce) chaseLoop.current = requestAnimationFrame(step);
+    };
+    chaseLoop.current = requestAnimationFrame(step);
+  };
+  const setChaseTarget = (px, py) => {
+    const flip = px > window.innerWidth - W - 60;
+    const cx = Math.max(6, Math.min(window.innerWidth - W - 6, flip ? px - W - 20 : px + 22));
+    const cy = Math.max(6, Math.min(window.innerHeight - H - 6, py + 6));
+    ct.current = { x: cx, y: cy }; chaseGo();
+  };
+  useEffect(() => {
+    if (chase) return undefined;
+    // al salir del juego vuelve a su lugar
+    if (xr.current != null && (Math.abs(xr.current - homeX()) > 2 || Math.abs(yr.current - homeY()) > 2)) {
+      xr.current = homeX(); tx.current = xr.current; yr.current = homeY();
+      setFalling(true); setX(xr.current); setY(yr.current);
+      const t = setTimeout(() => setFalling(false), 650);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [chase]);
+
+  useEffect(() => {
+    const start = homeX();
+    xr.current = start; tx.current = start; setX(start); yr.current = homeY(); setY(yr.current);
+    const onResize = () => { if (drag.current) return; xr.current = homeX(); tx.current = xr.current; setX(xr.current); yr.current = homeY(); setY(yr.current); };
+    window.addEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); cancelAnimationFrame(loopRef.current); };
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const dr = dockRect(); const v = !dr || (dr.bottom > 64 && dr.top < window.innerHeight - 10);
+      if (v !== visRef.current) { visRef.current = v; setVis(v); }
+      const dk = !!dr; if (dk !== dockedRef.current) { dockedRef.current = dk; setDocked(dk); }
+      if (drag.current || fallingRef.current || chaseRef.current || xr.current == null) return;
+      const hx = homeX(), hy = homeY();
+      if (Math.abs(hx - xr.current) > 0.5 || Math.abs(hy - yr.current) > 0.5) { xr.current = hx; tx.current = hx; yr.current = hy; setX(hx); setY(hy); }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // sigue al puntero en horizontal (se corre si el puntero se acerca a su franja) y mira hacia él
+  useEffect(() => {
+    let raf = 0;
+    const upd = () => {
+      raf = 0;
+      const p = ptr.current; if (!p || xr.current == null) return;
+      const cx = xr.current + W / 2, cy = (yr.current == null ? floor() : yr.current) + H * 0.55;
+      const dx = p.x - cx, dy = p.y - cy;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1, k = Math.min(1, d / 140);
+      setLook({ x: (dx / d) * k, y: (dy / d) * k });
+      setLean(Math.max(-14, Math.min(14, (dx / 160) * 14)));
+    };
+    const onMove = (e) => {
+      ptr.current = { x: e.clientX, y: e.clientY };
+      moved.current = Date.now(); idle.current = 0;
+      if (!raf) raf = requestAnimationFrame(upd);
+      if (chaseRef.current && !drag.current && !(e.target.closest && e.target.closest("[data-gota]"))) setChaseTarget(e.clientX, e.clientY);
+    };
+    const onDown = (e) => {
+      ptr.current = { x: e.clientX, y: e.clientY }; moved.current = Date.now(); idle.current = 0;
+      if (!raf) raf = requestAnimationFrame(upd);
+      if (chaseRef.current && !drag.current && !(e.target.closest && e.target.closest("[data-gota]"))) setChaseTarget(e.clientX, e.clientY);
+    };
+    // en el juego: si tocás algo que tiene su «i», Gota te cuenta un dato extra de eso
+    const onClick = (e) => {
+      if (!chaseRef.current) return;
+      const t = e.target; if (!t || !t.closest || t.closest("[data-gota],[data-gkey]")) return;
+      let key = null;
+      for (let el = t; el && el !== document.body; el = el.parentElement) {
+        const ks = el.querySelectorAll ? el.querySelectorAll("[data-gkey]") : [];
+        if (ks.length === 1) { key = ks[0].getAttribute("data-gkey"); break; }
+        if (ks.length > 1) break;
+      }
+      const data = key && INFO_TEXTS[key];
+      if (!data) return;
+      const first = data.body[0] || "";
+      const sentences = first.match(/[^.!?]+[.!?]+/g) || [first];
+      const msg = (data.title ? data.title + ": " : "") + sentences.slice(0, 2).join(" ").trim();
+      gota.set({ key: `info-${key}-${Date.now()}`, msg, sticky: false, react: null });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    window.addEventListener("click", onClick);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerdown", onDown); window.removeEventListener("click", onClick); cancelAnimationFrame(raf); cancelAnimationFrame(chaseLoop.current); };
+  }, []);
+
+  // mensaje nuevo: abre el globo y escribe; si no es "fijo", se cierra solo
+  useEffect(() => {
+    if (!cur.msg || !enabled) return undefined;
+    setOpen(true); setTyped(reduce ? 999 : 0); idle.current = 0;
+    if (cur.react) setReact(cur.react);
+    const t0 = setTimeout(() => setReact(null), 1200);
+    let t1 = 0;
+    if (!cur.sticky) t1 = setTimeout(() => setOpen(false), 9000 + cur.msg.length * 40);
+    return () => { clearTimeout(t0); clearTimeout(t1); };
+  }, [cur.n, enabled]);
+  useEffect(() => {
+    if (!open || typed >= cur.msg.length) return undefined;
+    const t = setInterval(() => setTyped(n => n + 2), 24);
+    return () => clearInterval(t);
+  }, [open, typed, cur.n]);
+  const talking = open && typed < cur.msg.length;
+
+  useEffect(() => {
+    let t;
+    const loop = () => { t = setTimeout(() => { setBlink(true); setTimeout(() => setBlink(false), 140); loop(); }, 2400 + Math.random() * 2800); };
+    loop();
+    return () => clearTimeout(t);
+  }, []);
+
+  const nextTip = () => {
+    const tips = cur.tips && cur.tips.length ? cur.tips : GOTA_BASE_TIPS;
+    const t = tips[tipI.current % tips.length]; tipI.current += 1;
+    gota.set({ key: `tip-${cur.n}-${tipI.current}`, msg: t, sticky: false, react: null });
+  };
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const t = setInterval(() => {
+      idle.current += 1;
+      if (idle.current >= 16 && !openRef.current && !document.hidden) { idle.current = 0; nextTip(); }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [enabled, cur.n]);
+
+  const tap = () => {
+    sfx.play("drop"); idle.current = 0;
+    setReact("good"); setTimeout(() => setReact(null), 900);
+    const dk = document.getElementById("gota-dock");
+    if (dk && dk.getAttribute("data-quiet")) return;
+    if (!open && !dockedRef.current) { setOpen(true); setTyped(reduce ? 999 : 0); gota.set({ key: `again-${cur.n}-${Date.now()}`, msg: cur.msg, sticky: cur.sticky, react: null }); }
+    else gota.nextTip();
+  };
+
+  // se puede agarrar y llevar de un lado a otro (solo en horizontal)
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: e.clientX - xr.current, oy: e.clientY - yr.current, on: false };
+  };
+  const onPointerMove = (e) => {
+    const d = drag.current; if (!d) return;
+    if (!d.on && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) { d.on = true; setHeld(true); gota.setHeld(true); setFalling(false); }
+    if (d.on) { const v = clampX(e.clientX - d.ox); xr.current = v; tx.current = v; setX(v); const w = Math.max(6, Math.min(floor(), e.clientY - d.oy)); yr.current = w; setY(w); }
+  };
+  const onPointerUp = () => {
+    const d = drag.current; drag.current = null;
+    if (!d) return;
+    if (!d.on) { tap(); return; }
+    setHeld(false); moved.current = Date.now();
+    const hx = homeX(), hy = homeY();
+    if (chaseRef.current) { if (ptr.current) setChaseTarget(ptr.current.x, ptr.current.y); return; }
+    if (Math.abs(xr.current - hx) > 2 || Math.abs(yr.current - hy) > 2) {
+      xr.current = hx; tx.current = hx; yr.current = hy;
+      if (reduce) { setX(hx); setY(hy); gota.setHeld(false); return; }
+      setFalling(true); setX(hx); setY(hy);
+      setTimeout(() => { gota.setHeld(false); setFalling(false); setLanding(true); setTimeout(() => setLanding(false), 500); sfx.play("drop"); setReact("good"); setTimeout(() => setReact(null), 800); }, 640);
+    } else gota.setHeld(false);
+  };
+  const onKeyDown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(); } };
+
+  if (x == null || y == null || hidden || stage || suppress) return null;
+  if (!enabled) {
+    return (
+      <button onClick={() => gota.setEnabled(true)} className="hi-btn" aria-label="Mostrar a Gota, tu guía" title="Mostrar a Gota"
+        style={{ position: "fixed", right: 14, bottom: 16, zIndex: 90, width: 40, height: 40, borderRadius: "50%", border: "2px solid var(--pop-ink)", background: "#fff", boxShadow: "3px 3px 0 var(--pop-ink)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, padding: 0 }}>💧</button>
+    );
+  }
+  const bw = Math.min(250, window.innerWidth - 16);
+  const bLeft = Math.max(8, Math.min(window.innerWidth - bw - 8, x + W / 2 - bw / 2));   // el globo acompaña a Gota
+  const tail = Math.max(14, Math.min(bw - 26, x + W / 2 - bLeft - 6));
+  const text = cur.msg.slice(0, typed);
+  const below = y < 150;
+  return (
+    <>
+      {open && cur.msg && !docked && !held && !falling && (
+        <div className="hi-gbubble" data-gota="1" onClick={() => tap()} aria-hidden="true" style={{
+          position: "fixed", left: bLeft, [below ? "top" : "bottom"]: below ? y + H + 8 : window.innerHeight - y + 8, width: bw, zIndex: 90, transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), bottom .62s cubic-bezier(.34,1.35,.5,1)" : "none",
+          background: "#fff", border: "2px solid var(--pop-ink)", borderRadius: 12, boxShadow: "3px 3px 0 var(--pop-ink)", padding: "9px 12px 8px",
+          fontSize: 12.5, lineHeight: 1.45, color: "var(--ink)", cursor: "pointer", fontFamily: "var(--font-body)", pointerEvents: chase ? "none" : "auto",
+        }}>
+          {text}
+          {typed >= cur.msg.length && (
+            <div style={{ marginTop: 5, display: "flex", justifyContent: "flex-end", gap: 8, fontSize: 10.5, color: "var(--ink-soft)" }}>
+              <span onClick={(e) => { e.stopPropagation(); gota.setEnabled(false); }} role="button" style={{ textDecoration: "underline", cursor: "pointer" }}>ocultar</span>
+            </div>
+          )}
+          <span style={{ position: "absolute", [below ? "top" : "bottom"]: -8, left: tail, width: 12, height: 12, background: "#fff", borderRight: below ? "none" : "2px solid var(--pop-ink)", borderBottom: below ? "none" : "2px solid var(--pop-ink)", borderLeft: below ? "2px solid var(--pop-ink)" : "none", borderTop: below ? "2px solid var(--pop-ink)" : "none", transform: "rotate(45deg)" }} />
+        </div>
+      )}
+      <div data-gota="1" className={landing ? "hi-gota-land" : undefined} style={{ position: "fixed", left: x, top: y, width: W, height: H, zIndex: 90, touchAction: "none", opacity: vis ? 1 : 0, pointerEvents: vis ? "auto" : "none",  transform: landing || held ? undefined : `rotate(${lean}deg)`, transformOrigin: "50% 100%", transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), opacity .2s ease" : "transform .18s ease-out, opacity .2s ease" }}>
+        <button onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={onKeyDown}
+          aria-label="Gota, tu guía. Tocala para un consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
+          style={{ width: W, height: H, padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "none", display: "block", filter: held ? "drop-shadow(0 8px 6px rgba(20,24,31,.28))" : "drop-shadow(0 3px 0 rgba(20,24,31,.22))" }}>
+          <GotaMascot mood={cur.mood || "happy"} size={W} react={react} look={held ? { x: 0, y: -0.6 } : look} blink={blink} talk={talking} />
+        </button>
+      </div>
+    </>
+  );
+}
+
 function BackgroundFX() {
   return (
     <div aria-hidden="true" className="hi-water">
@@ -603,10 +1121,8 @@ const styles = {
   app: {
     minHeight: "100%", padding: "24px 12px", fontFamily: "var(--font-body)", color: "var(--ink)",
     backgroundColor: "var(--bg)",
-    backgroundImage: "radial-gradient(rgba(41,82,227,0.16) 1.3px, transparent 1.3px)",
-    backgroundSize: "22px 22px",
   },
-  shell: { maxWidth: 720, margin: "0 auto", position: "relative" },
+  shell: { maxWidth: 720, margin: "0 auto", position: "relative", zIndex: 1, paddingBottom: 110 },
 };
 
 const splashStyles = {
@@ -793,6 +1309,142 @@ const pillBadge = (color, bg) => ({
   boxShadow: "3px 3px 0 var(--pop-ink)"
 });
 
+const HOME_TIPS = [
+  "¡Hola! Soy Gota. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.",
+  "Podés agarrarme y soltarme: ¡me encanta caer!",
+];
+
+// Globo de Gota dentro de la tarjeta del juego: muestra el mensaje actual; tocarlo cambia el consejo.
+function DockBubble() {
+  const { cur, held } = useGotaStore();
+  const reduce = typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [typed, setTyped] = useState(0);
+  const full = cur.msg || "";
+  useEffect(() => { setTyped(reduce ? 999 : 0); }, [cur.n]);
+  useEffect(() => {
+    if (typed >= full.length) return undefined;
+    const t = setInterval(() => setTyped(n => n + 2), 24);
+    return () => clearInterval(t);
+  }, [typed, cur.n]);
+  return (
+    <div className="hi-bubble" onClick={() => { sfx.play("drop"); gota.nextTip(); }} style={{ cursor: "pointer", marginLeft: 4, visibility: held ? "hidden" : "visible", pointerEvents: held ? "none" : "auto" }}>
+      <span style={{ visibility: "hidden", display: "block" }} aria-hidden="true">{full}</span>
+      <span style={{ position: "absolute", left: 12, right: 12, top: 10 }} aria-hidden="true">{full.slice(0, typed)}</span>
+      <span className="hi-sr" role="status" aria-live="polite">{full}</span>
+    </div>
+  );
+}
+
+// Gota del inicio: mira al puntero, parpadea, habla, se puede agarrar y cambia de consejo.
+function HomeGota({ live = false, quiet = false, size = 58, aside = null }) {
+  const store = useGotaStore();
+  const liveTip = useRef(0);
+  const [i, setI] = useState(0);
+  const [typed, setTyped] = useState(0);
+  const [look, setLook] = useState({ x: 0, y: 0 });
+  const [blink, setBlink] = useState(false);
+  const [react, setReact] = useState(null);
+  const [held, setHeld] = useState(false);
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const [back, setBack] = useState(false);
+  const [tilt, setTilt] = useState(0);
+  const ref = useRef(null);
+  const drag = useRef(null);
+  const ptr = useRef(null);
+  const raf = useRef(0);
+  const reduce = typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const full = live ? (store.cur.msg || HOME_TIPS[0]) : HOME_TIPS[i];
+  useEffect(() => {
+    if (!live && !quiet) return undefined;
+    gota.setStage(true);
+    return () => gota.setStage(false);
+  }, [live, quiet]);
+
+  useEffect(() => { setTyped(reduce ? 999 : 0); }, [live ? store.cur.n : i]);
+  useEffect(() => {
+    if (typed >= full.length) return undefined;
+    const t = setInterval(() => setTyped(n => n + 2), 24);
+    return () => clearInterval(t);
+  }, [typed, i, store.cur.n]);
+  const talking = !quiet && typed < full.length;
+
+  useEffect(() => { if (live && store.cur.react) { setReact(store.cur.react); const t = setTimeout(() => setReact(null), 1200); return () => clearTimeout(t); } return undefined; }, [live ? store.cur.n : 0]);
+
+  useEffect(() => {
+    const upd = () => {
+      raf.current = 0;
+      const p = ptr.current, el = ref.current;
+      if (!p || !el) return;
+      const b = el.getBoundingClientRect();
+      const dx = p.x - (b.left + b.width / 2), dy = p.y - (b.top + b.height * 0.55);
+      const d = Math.sqrt(dx * dx + dy * dy) || 1, k = Math.min(1, d / 160);
+      setLook({ x: (dx / d) * k, y: (dy / d) * k });
+      setTilt(Math.max(-14, Math.min(14, (dx / 160) * 14)));
+    };
+    const onMove = (e) => { ptr.current = { x: e.clientX, y: e.clientY }; if (!raf.current) raf.current = requestAnimationFrame(upd); };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerdown", onMove, { passive: true });
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerdown", onMove); cancelAnimationFrame(raf.current); };
+  }, []);
+
+  useEffect(() => {
+    let t;
+    const loop = () => { t = setTimeout(() => { setBlink(true); setTimeout(() => setBlink(false), 140); loop(); }, 2400 + Math.random() * 2800); };
+    loop();
+    return () => clearTimeout(t);
+  }, []);
+
+  const next = () => {
+    sfx.play("drop");
+    if (quiet) { /* sin consejos en esta sección */ }
+    else if (live) {
+      gota.nextTip();
+    } else setI(n => (n + 1) % HOME_TIPS.length);
+    setReact("good"); setTimeout(() => setReact(null), 800);
+  };
+  const onDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { sx: e.clientX, sy: e.clientY, on: false };
+    setBack(false);
+  };
+  const onMove = (e) => {
+    const d = drag.current; if (!d) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (!d.on && Math.hypot(dx, dy) > 6) { d.on = true; setHeld(true); }
+    if (d.on) setOff({ x: dx, y: dy });
+  };
+  const onUp = () => {
+    const d = drag.current; drag.current = null;
+    if (!d) return;
+    if (!d.on) { next(); return; }
+    setHeld(false);
+    if (reduce) { setOff({ x: 0, y: 0 }); return; }
+    setBack(true); setOff({ x: 0, y: 0 });
+    setTimeout(() => { setBack(false); sfx.play("drop"); setReact("good"); setTimeout(() => setReact(null), 700); }, 620);
+  };
+  const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); next(); } };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: quiet ? "center" : "flex-start", gap: 14, margin: aside ? "34px 0 20px 4px" : quiet ? "0 0 14px" : "0 0 20px 4px", position: "relative", zIndex: 3 }}>
+      <div style={{ flexShrink: 0, transform: `translate(${off.x}px, ${off.y}px) rotate(${held ? 0 : tilt}deg)`, transformOrigin: "50% 100%", transition: back ? "transform .62s cubic-bezier(.34,1.45,.5,1)" : "transform .18s ease-out" }}>
+      <button ref={ref} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onKeyDown={onKey}
+        aria-label="Gota. Tocala para otro consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
+        style={{ width: size, height: Math.round(size * 1.2), padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "none", display: "block",
+          filter: held ? "drop-shadow(0 10px 8px rgba(20,24,31,.28))" : "none" }}>
+        <GotaMascot mood={live ? (store.cur.mood || "happy") : "happy"} size={size} react={react} look={held ? { x: 0, y: -0.8 } : look} blink={blink} talk={talking} />
+      </button>
+      </div>
+      {!quiet && <div className="hi-bubble" onClick={next} style={{ flex: 1, cursor: "pointer", visibility: held || back ? "hidden" : "visible" }}>
+        <span style={{ visibility: "hidden", display: "block" }} aria-hidden="true">{full}</span>
+        <span style={{ position: "absolute", left: 12, right: 12, top: 10 }} aria-hidden="true">{full.slice(0, typed)}</span>
+        <span className="hi-sr" role="status" aria-live="polite">{full}</span>
+      </div>}
+      {aside && <div style={{ position: "absolute", top: -30, right: 6, zIndex: 4 }}>{aside}</div>}
+    </div>
+  );
+}
+
 function Inicio({ setTab }) {
   const [showDatos, setShowDatos] = useState(false);
   return (
@@ -806,10 +1458,7 @@ function Inicio({ setTab }) {
           <p style={{ fontSize: 13.5, color: "var(--ink-soft)", lineHeight: 1.7, margin: "0 0 20px", maxWidth: 480 }}>
             La mayoría piensa solo en la luz que consumen los centros de datos. Pocos saben que también usan agua para refrigerarse, y que generar esa electricidad tiene, además, su propio <span className="mk mk-blue">gasto de agua escondido</span>.
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 20px 4px" }}>
-            <GotaMascot mood="happy" size={58} />
-            <div className="hi-bubble" style={{ flex: 1 }}>¡Hola! Soy Gota. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.</div>
-          </div>
+          <HomeGota />
           <button
             onClick={() => setTab("juego")}
             className="hi-btn hi-glow"
@@ -1441,7 +2090,7 @@ const GAME_ACTION_DEFS = [
   { id: "resilience", label: "Plan de contingencia", icon: Thermometer, color: "var(--acc-copper)", base: 1400,
     desc: "Amortigua olas de calor, sequías y recortes de agua: sus efectos pegan hasta 15% menos por cada plan (tope 50%)." },
   { id: "save", label: "Ahorrar presupuesto", icon: Wallet, color: "var(--acc-graphite)", base: 0,
-    desc: "No invertís nada este día. Guardás plata para más adelante." },
+    desc: "No invertís nada este día. Guardás dinero para más adelante." },
 ];
 
 function costFor(action, state) {
@@ -1449,11 +2098,24 @@ function costFor(action, state) {
   return actionCost(action.base, state.purchases[action.id] || 0);
 }
 
+// En Fácil, cada imprevisto negativo tiene una mejora que lo evita: si la elegís ese día, el daño no se aplica.
+const EVENT_COUNTER = { heatwave: "cooling", drought: "renewable", pollution: "renewable", cutback: "cooling", viral: "capacity", maintenance: "capacity" };
+const EVENT_HINT = {
+  pollution: "La red eléctrica arrancó plantas más sucias y sedientas. ¿Qué mejora cambia de dónde sale tu energía?",
+  heatwave: "Los servidores se recalientan. Pensá qué mejora se ocupa del calor.",
+  drought: "La electricidad de la red gasta más agua de la cuenta. ¿Qué mejora achica esa parte?",
+  cutback: "Hoy hay menos agua para refrigerar. ¿Qué mejora te hace depender menos de ella?",
+  viral: "Llegan muchas más consultas de las que aguantás. ¿Qué te daría más espacio?",
+  maintenance: "Hay servidores fuera de línea. ¿Qué mejora te devuelve capacidad?",
+};
+const counterLabel = (id) => { const d = GAME_ACTION_DEFS.find(a => a.id === id); return d ? (d.easyLabel || d.label) : ""; };
+
 const GAME_EVENTS = [
   { id: "calm", weight: 30, label: "Día tranquilo", emoji: "☀️", desc: "Sin sorpresas, operación normal.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0 },
   { id: "heatwave", weight: 11, label: "Ola de calor", emoji: "🔥", desc: "El enfriamiento necesita más agua de lo normal.", kind: "modifier", waterDirectMult: 1.4, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
   { id: "drought", weight: 10, label: "Sequía regional", emoji: "🌵", desc: "La red eléctrica local recurre a generación más sedienta.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1.6, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
   { id: "cutback", label: "Recorte de agua municipal", emoji: "🚱", weight: 8, desc: "El municipio limita el agua disponible para refrigeración.", kind: "modifier", waterDirectMult: 1.8, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
+  { id: "pollution", weight: 9, label: "Alerta por contaminación", emoji: "🏭", desc: "Por una alerta en la zona, la red eléctrica enciende plantas más contaminantes y sedientas.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1.5, demandMult: 1, capacityMult: 1, renewableBonus: 0, resistible: true },
   { id: "viral", weight: 11, label: "Consulta viral", emoji: "📈", desc: "Un pico de demanda inesperado golpea el data center.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1.8, capacityMult: 1, renewableBonus: 0 },
   { id: "windy", weight: 9, label: "Día ventoso", emoji: "🌬️", desc: "La red eléctrica regional tira de más energía eólica hoy.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 1, renewableBonus: 25 },
   { id: "maintenance", weight: 8, label: "Mantenimiento programado", emoji: "🔧", desc: "Parte de la capacidad está fuera de línea hoy.", kind: "modifier", waterDirectMult: 1, waterIndirectMult: 1, demandMult: 1, capacityMult: 0.7, renewableBonus: 0 },
@@ -1536,9 +2198,11 @@ function pickEvent(diff) {
   const d = diff || GAME_DIFFICULTIES.normal;
   const pool = GAME_EVENTS
     .filter(e => d.characters || e.kind === "modifier")
-    .filter(e => !(d.tier === 1 && (e.id === "cutback" || e.id === "drought")))
+    .filter(e => !e.easyOnly || d.tier === 1)
     .map(e => {
       let w = e.weight;
+      if (d.tier === 1 && e.id === "calm") w *= 0.3;                 // en Fácil hay más imprevistos
+      if (d.tier === 1 && EVENT_COUNTER[e.id]) w *= 1.4;
       if (e.kind === "modifier" && (e.resistible || e.id === "viral")) w *= d.harsh;
       if (e.kind !== "modifier" && d.tier === 3) w *= 1.5;
       return { e, w };
@@ -1657,7 +2321,7 @@ function computeAchievements(state) {
 const GUIDE_STEPS = [
   {
     icon: Gamepad2, color: "var(--acc-blue)", title: "¿Qué es este juego?",
-    body: "Vos estás a cargo de un centro de datos: el lugar físico donde viven los servidores que hacen funcionar cosas como ChatGPT o Gemini. Tu trabajo es atender las consultas de gente que usa esa IA, sin quedarte sin plata, sin gastar de más y sin perder la confianza de la gente.",
+    body: "Vos estás a cargo de un centro de datos: el lugar físico donde viven los servidores que hacen funcionar cosas como ChatGPT o Gemini. Tu trabajo es atender las consultas de gente que usa esa IA, sin quedarte sin dinero, sin gastar de más y sin perder la confianza de la gente.",
   },
   {
     icon: Droplets, color: "var(--acc-orange)", title: "¿Y por qué agua? Pensé que era solo electricidad",
@@ -1665,7 +2329,7 @@ const GUIDE_STEPS = [
   },
   {
     icon: Wallet, color: "var(--dark-panel)", title: "Los números que vas a cuidar",
-    body: "💧 Agua y ⚡ Energía: cuánto gastaste en total. 💰 Presupuesto: la plata que tenés para invertir — si llega a cero, no podés hacer más mejoras. 🌱 Sostenibilidad: qué tan responsable fuiste con el ambiente. 🏆 Reputación: cuánto confía la gente en vos. Si la sostenibilidad se mantiene muy baja muchos días seguidos, te llega una multa.",
+    body: "💧 Agua y ⚡ Energía: cuánto gastaste en total. 💰 Presupuesto: el dinero que tenés para invertir — si llega a cero, no podés hacer más mejoras. 🌱 Sostenibilidad: qué tan responsable fuiste con el ambiente. 🏆 Reputación: cuánto confía la gente en vos. Si la sostenibilidad se mantiene muy baja muchos días seguidos, te llega una multa.",
   },
   {
     icon: ListChecks, color: "var(--acc-blue)", title: "Qué hacés en cada día de partida",
@@ -1791,7 +2455,7 @@ const INFO_TEXTS = {
     title: "Pasar el día y ahorrar",
     body: [
       "No invertís nada y guardás el presupuesto. Igual se atienden las consultas del día con lo que ya tenés y cobrás por ellas.",
-      "Sirve cuando no te alcanza para una mejora importante, o cuando preferís juntar plata para algo más caro más adelante.",
+      "Sirve cuando no te alcanza para una mejora importante, o cuando preferís juntar dinero para algo más caro más adelante.",
     ],
   },
   demand: {
@@ -1806,7 +2470,7 @@ const INFO_TEXTS = {
     body: [
       "Agua acumulada: los litros que gastó tu centro de datos en la partida. Suma el agua directa (refrigeración), la indirecta (la de generar la electricidad) y la de fabricar la infraestructura.",
       "Energía acumulada: la electricidad que consumieron los servidores al atender consultas.",
-      "Presupuesto: la plata que tenés. Cobrás por cada consulta atendida y gastás cuando invertís.",
+      "Presupuesto: el dinero que tenés. Cobrás por cada consulta atendida y gastás cuando invertís.",
     ],
   },
   sostenibilidad: {
@@ -1854,12 +2518,13 @@ const INFO_TEXTS = {
   },
 };
 
-function InfoButton({ onClick, label = "Más información", dark = false, style }) {
+function InfoButton({ onClick, label = "Más información", dark = false, style, gkey }) {
   return (
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(e.currentTarget); }}
       aria-label={label}
+      data-gkey={gkey}
       title={label}
       className="hi-btn"
       style={{
@@ -2007,20 +2672,38 @@ function gotaMood(sustainability) {
   return "sad";
 }
 
-function GotaMascot({ mood = "ok", size = 56, react }) {
+function GotaMascot({ mood = "ok", size = 56, react, look, blink, talk }) {
   const body = { happy: "var(--acc-blue)", ok: "var(--acc-blue)", worried: "#E0A33A", sad: "var(--acc-red)" }[mood];
   const mouth = { happy: "M44 92 Q60 110 76 92", ok: "M47 98 Q60 103 73 98", worried: "M46 104 Q60 92 74 104", sad: "M44 108 Q60 90 76 108" }[mood];
+  const lk = look || { x: 0, y: 0 };
+  const lx = lk.x * 3.6, ly = lk.y * 3.2;
+  const fx = lk.x * 11, fy = lk.y * 7;   // la cara se desplaza hacia donde mira (efecto de giro)
   return (
-    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 120 144" className={react === "good" ? "hi-jump" : react === "bad" ? "hi-shake" : mood === "happy" ? "hi-bob" : "hi-wobble"} aria-hidden="true" style={{ flexShrink: 0 }}>
+    <span style={{ display: "block", width: size, height: Math.round(size * 1.2), flexShrink: 0, transform: `perspective(260px) rotateY(${(lk.x * 30).toFixed(1)}deg) rotateX(${(-lk.y * 20).toFixed(1)}deg)`, transition: "transform .14s ease-out" }}>
+    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 120 144" className={react === "good" ? "hi-jump" : react === "bad" ? "hi-shake" : mood === "happy" ? "hi-bob" : "hi-wobble"} aria-hidden="true" style={{ display: "block" }}>
       <path d="M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z" fill={body} stroke="var(--ink)" strokeWidth="4" />
-      <path d="M30 100 C30 88, 36 78, 44 68" stroke="rgba(255,255,255,0.5)" strokeWidth="7" strokeLinecap="round" fill="none" />
-      <circle cx="44" cy="80" r="9" fill="#FFFFFF" /><circle cx="76" cy="80" r="9" fill="#FFFFFF" />
-      <circle cx="46" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" /><circle cx="74" cy={mood === "sad" ? 84 : 81} r="4.5" fill="var(--ink)" />
+      <path d="M30 100 C30 88, 36 78, 44 68" stroke="rgba(255,255,255,0.5)" strokeWidth="7" strokeLinecap="round" fill="none" transform={`translate(${(-lk.x * 4).toFixed(1)} 0)`} />
+      <g transform={`translate(${fx.toFixed(1)} ${fy.toFixed(1)})`} style={{ transition: "transform .14s ease-out" }}>
+      {react === "good" ? (
+        <g stroke="var(--ink)" strokeWidth="4.5" strokeLinecap="round" fill="none"><path d="M35 84 Q44 72 53 84" /><path d="M67 84 Q76 72 85 84" /></g>
+      ) : blink ? (
+        <g stroke="var(--ink)" strokeWidth="4" strokeLinecap="round"><path d="M36 82 H52" /><path d="M68 82 H84" /></g>
+      ) : (
+        <>
+          <circle cx="44" cy="80" r="9" fill="#FFFFFF" /><circle cx="76" cy="80" r="9" fill="#FFFFFF" />
+          <circle cx={46 + lx} cy={(mood === "sad" ? 84 : 81) + ly} r="4.5" fill="var(--ink)" /><circle cx={74 + lx} cy={(mood === "sad" ? 84 : 81) + ly} r="4.5" fill="var(--ink)" />
+        </>
+      )}
       {mood === "worried" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 62 L52 68" /><path d="M86 62 L68 68" /></g>}
       {mood === "sad" && <g stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"><path d="M34 68 L52 62" /><path d="M86 68 L68 62" /></g>}
       {mood === "happy" && <g fill="#FFB4A8" opacity="0.8"><circle cx="30" cy="96" r="6" /><circle cx="90" cy="96" r="6" /></g>}
-      <path d={mouth} stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" fill="none" />
+      {talk ? <ellipse className="hi-talk" cx="60" cy="100" rx="9" ry="7" fill="var(--ink)" />
+        : react === "good" ? <path d="M43 92 Q60 118 77 92 Z" fill="var(--ink)" stroke="var(--ink)" strokeWidth="3" strokeLinejoin="round" />
+        : react === "bad" ? <ellipse cx="60" cy="104" rx="6" ry="8" fill="var(--ink)" />
+        : <path d={mouth} stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" fill="none" />}
+      </g>
     </svg>
+    </span>
   );
 }
 
@@ -2028,12 +2711,13 @@ function gotaSays(state) {
   const r = state.dayResult;
   if (r) {
     if (r.blocked) return "No te alcanzó el presupuesto para eso. ¡Mañana probamos otra cosa!";
+    if (r.countered) return `¡Bien pensado! Tu elección evitó el problema: ${r.event.label.toLowerCase()}.`;
     if (r.unmet > 0) return "Quedaron consultas sin atender. Más servidores ayudan.";
     if (r.sustainDelta > 0) return "¡Muy bien! Hoy cuidaste el agua.";
     if (r.sustainDelta < 0) return "Hoy se gastó bastante agua. Probá enfriar mejor o usar energía limpia.";
     return "Día tranquilo. ¡Seguimos!";
   }
-  if (state.event && state.event.kind === "modifier" && state.event.id !== "calm") return `${state.event.emoji} ${state.event.label}: ${state.event.desc}`;
+  if (state.event && state.event.kind === "modifier" && state.event.id !== "calm") return `${state.event.emoji} ${state.event.label}: ${state.event.desc}` + (state.diff && state.diff.tier === 1 && EVENT_HINT[state.event.id] ? ` ${EVENT_HINT[state.event.id]}` : "");
   if (state.day === 1) return "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño.";
   return "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
 }
@@ -2074,7 +2758,7 @@ function GoalStrip({ state }) {
   return (
     <div className="hi-card" style={{ background: "var(--paper)", border: "2px dashed var(--ink)", borderRadius: 10, padding: "12px 14px", marginTop: 12 }}>
       <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.5 }}>
-        🎯 <strong>Tu meta:</strong> llegar al día {state.diff.days} con el agua cuidada en <span className="mk mk-blue">50% o más</span> y con plata en el presupuesto.
+        🎯 <strong>Tu meta:</strong> llegar al día {state.diff.days} con el agua cuidada en <span className="mk mk-blue">50% o más</span> y con dinero en el presupuesto.
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: ok ? "var(--acc-green)" : "var(--acc-mustard)" }}>
         {ok ? "✓ Ahora mismo vas cumpliendo." : "Todavía no: mirá la barra de agua cuidada."}
@@ -2403,6 +3087,8 @@ function Juego({ onActiveChange }) {
     const t = setTimeout(() => sfx.play(r.sustainDelta > 0 && r.unmet === 0 ? "good" : (r.sustainDelta < 0 || r.unmet > 0 ? "bad" : "tick")), 700);
     return () => clearTimeout(t);
   }, [resultKey]);
+  useGota(buildGotaCtx({ zone, diffKey, state, chosen }));
+  const gotaOn = useGotaStore().enabled;
   const alertKey = state && !state.dayResult && state.event && state.event.kind === "modifier" && state.event.id !== "calm" ? `${state.day}-${state.event.id}` : "";
   useEffect(() => { if (alertKey) sfx.play("alert"); }, [alertKey]);
 
@@ -2413,6 +3099,7 @@ function Juego({ onActiveChange }) {
     return () => { if (onActiveChange) onActiveChange(false); };
   }, [inProgress, onActiveChange]);
   const [showGuide, setShowGuide] = useState(false);
+  useEffect(() => { gota.setSuppress(showGuide); return () => gota.setSuppress(false); }, [showGuide]);
 
   const startGame = (key) => {
     const fresh = freshGameState(key, zone);
@@ -2469,22 +3156,11 @@ function Juego({ onActiveChange }) {
   if (!zone) {
     return (
       <div>
-        <DataCenterHero />
-        <div style={{ background: "var(--dark-panel)", borderRadius: 16, padding: 20, marginBottom: 12, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.5) 1.2px, transparent 1.2px)", backgroundSize: "20px 20px", opacity: 0.08, pointerEvents: "none" }} />
-          <div style={{ position: "relative" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <Gamepad2 size={17} color="#FFFFFF" />
-              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 600, fontSize: 16, color: "#FFFFFF" }}><SeqName /></div>
-            </div>
-            <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", margin: "0 0 12px" }}>
-              Elegí dónde construir el centro de datos. Cada lugar tiene una ventaja y un problema: no hay una zona perfecta, y todas se pueden ganar.
-            </p>
-            <button onClick={() => setShowGuide(true)} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", background: "var(--acc-orange)", color: "#FFFFFF" }}>
-              📖 ¿Primera vez? Ver la guía paso a paso
-            </button>
-          </div>
-        </div>
+        <HomeGota live size={92} />
+        <button onClick={() => setShowGuide(true)} className="hi-btn hi-ink-rest"
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 16px", marginBottom: 14, borderRadius: 9999, border: "2px solid var(--pop-ink)", background: "var(--pop-or)", color: "#fff", boxShadow: "4px 4px 0 var(--pop-ink)", cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 14, textTransform: "uppercase" }}>
+          <span>📖</span> ¿Primera vez? Ver la guía paso a paso
+        </button>
 
         <button
           onClick={() => setZone(ZONES[Math.floor(Math.random() * ZONES.length)])}
@@ -2545,6 +3221,7 @@ function Juego({ onActiveChange }) {
   if (!state) {
     return (
       <div>
+        <HomeGota quiet size={76} />
         <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <Gamepad2 size={17} color="var(--acc-blue)" />
@@ -2571,7 +3248,7 @@ function Juego({ onActiveChange }) {
                 </span>
               </div>
             </button>
-            <InfoButton onClick={(el) => setInfo({ key: "diff_" + key, anchor: el })} label={`Qué incluye la dificultad ${d.label}`} style={{ position: "absolute", top: 14, right: 14 }} />
+            <InfoButton gkey={"diff_" + key} onClick={(el) => setInfo({ key: "diff_" + key, anchor: el })} label={`Qué incluye la dificultad ${d.label}`} style={{ position: "absolute", top: 14, right: 14 }} />
           </div>
         ))}
 
@@ -2610,7 +3287,8 @@ function Juego({ onActiveChange }) {
     const cost = costFor(actionDef, state);
     const canAfford = state.budget >= cost;
     const event = state.event;
-    const resistFactor = state.resilience > 0 && event.resistible ? Math.max(0.5, 1 - state.resilience * 0.15) : 1;
+    const countered = easy && EVENT_COUNTER[event.id] === chosen && canAfford;
+    const resistFactor = countered ? 0 : (state.resilience > 0 && event.resistible ? Math.max(0.5, 1 - state.resilience * 0.15) : 1);
 
     let { budget, capacity, cooling, renewable, efficiency, resilience, audited, reputation, purchases } = state;
     purchases = { ...purchases };
@@ -2625,10 +3303,10 @@ function Juego({ onActiveChange }) {
       if (actionDef.id === "audit") { audited = true; reputation = Math.min(100, reputation + 8); }
     }
 
-    const effectiveCapacity = Math.round(capacity * (event.kind === "modifier" ? event.capacityMult : 1));
+    const effectiveCapacity = Math.round(capacity * (event.kind === "modifier" && !countered ? event.capacityMult : 1));
     const eventRenewableBonus = event.kind === "modifier" ? event.renewableBonus : 0;
     const effectiveRenewable = Math.min(95, renewable + eventRenewableBonus);
-    const demand = state.demand;
+    const demand = countered && event.demandMult > 1 ? Math.round(state.demand / event.demandMult) : state.demand;
     const served = Math.min(demand, effectiveCapacity);
     const unmet = Math.max(0, demand - effectiveCapacity);
 
@@ -2667,7 +3345,7 @@ function Juego({ onActiveChange }) {
 
     const dayResult = {
       day: state.day, event, served, unmet, kWh, waterDirectMl, waterIndirectL, waterTotalL,
-      revenue, sustainDelta, repDelta, fine, actionTaken: canAfford ? actionDef : null, blocked: !canAfford, cost
+      countered, revenue, sustainDelta, repDelta, fine, actionTaken: canAfford ? actionDef : null, blocked: !canAfford, cost
     };
 
     // Cada 3 días (incluido el primero) aparece una afirmación Mito/Dato/Depende
@@ -2781,11 +3459,11 @@ function Juego({ onActiveChange }) {
 
         {easy && (
           <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "3px 3px 0 var(--ink)", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
-            <GotaMascot mood={state.sustainability >= 50 && state.budget > 0 ? "happy" : "worried"} size={54} />
+            {gotaOn ? <span id="gota-dock" data-quiet="1" aria-hidden="true" style={{ display: "block", width: 64, height: 77, flexShrink: 0 }} /> : <GotaMascot mood={state.sustainability >= 50 && state.budget > 0 ? "happy" : "worried"} size={54} />}
             <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>
               {state.sustainability >= 50 && state.budget > 0
-                ? <><strong>¡Meta cumplida!</strong> Cuidaste el agua ({Math.round(state.sustainability)}%) y cerraste con plata.</>
-                : <><strong>Casi.</strong> Tu meta era terminar con el agua cuidada en 50% o más y plata en el presupuesto. ¡Probá de nuevo!</>}
+                ? <><strong>¡Meta cumplida!</strong> Cuidaste el agua ({Math.round(state.sustainability)}%) y cerraste con dinero.</>
+                : <><strong>Casi.</strong> Tu meta era terminar con el agua cuidada en 50% o más y dinero en el presupuesto. ¡Probá de nuevo!</>}
             </div>
           </div>
         )}
@@ -2900,11 +3578,13 @@ function Juego({ onActiveChange }) {
           <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
         </svg>
       )}
-      <div role="status" aria-live="polite" className="hi-sr">{`Día ${state.day} de ${diff.days}. ${gotaSays(state)}`}</div>
+      <div role="status" aria-live="polite" className="hi-sr">{`Día ${state.day} de ${diff.days}.`}</div>
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: 18, marginBottom: 12, borderTop: "4px solid var(--acc-blue)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {gotaOn && <span id="gota-dock" aria-hidden="true" style={{ display: "block", width: 64, height: 77, flexShrink: 0 }} />}
+          <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 8px", marginBottom: gotaOn ? 8 : 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {!easy && <GotaMascot mood={mood} size={22} react={gotaReact} />}
             <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 16, color: "var(--acc-blue)" }}><SeqName /></div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2917,28 +3597,9 @@ function Juego({ onActiveChange }) {
             </button>
           </div>
         </div>
-        {easy ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8, paddingLeft: 4 }}>
-            <GotaMascot mood={mood} size={64} react={gotaReact} />
-            <div className="hi-bubble" key={gotaSays(state)} style={{ flex: 1 }}>{gotaSays(state)}</div>
+        {gotaOn && <DockBubble />}
           </div>
-        ) : (
-          <p style={{ fontSize: 12, color: "var(--ink-soft)", margin: 0 }}>
-            Atendé consultas de IA sin descuidar el agua, la electricidad y tu reputación pública.
-          </p>
-        )}
-        {(() => {
-          const done = state.dayResult ? state.day : state.day - 1;
-          const pct = Math.max(0, Math.min(100, (done / diff.days) * 100));
-          return (
-            <div style={{ position: "relative", height: 8, borderRadius: 4, background: "var(--paper-soft)", border: "1px solid var(--line)", margin: "14px 4px 4px" }} role="progressbar" aria-valuemin={0} aria-valuemax={diff.days} aria-valuenow={done} aria-label="Avance de la partida">
-              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, var(--acc-blue), var(--logo-cyan))", transition: "width .6s ease" }} />
-              <svg width="16" height="20" viewBox="0 0 12 16" style={{ position: "absolute", top: "50%", left: `${pct}%`, transform: "translate(-50%, -52%)", transition: "left .6s ease", filter: "drop-shadow(0 2px 3px rgba(41,82,227,0.35))" }} aria-hidden="true">
-                <path d="M6 1 C6 1, 1 7, 1 10.2 a5 5 0 0 0 10 0 C11 7, 6 1, 6 1 Z" fill="var(--acc-blue)" stroke="#FFFFFF" strokeWidth="1" />
-              </svg>
-            </div>
-          );
-        })()}
+        </div>
       </div>
 
       {/* Mapa del centro de datos: guardado para uso futuro. Para mostrarlo: <DataCenterMap state={state} /> */}
@@ -2951,7 +3612,7 @@ function Juego({ onActiveChange }) {
         const missing = Math.max(0, state.demand - capacityToday);
         return (
           <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "14px 16px", marginBottom: 12, position: "relative", border: `1px solid ${missing > 0 ? "var(--acc-red)" : "var(--line)"}` }}>
-            <InfoButton onClick={(el) => setInfo({ key: "demand", anchor: el })} label="Más información sobre consultas y capacidad" style={{ position: "absolute", top: 10, right: 10 }} />
+            <InfoButton gkey={"demand"} onClick={(el) => setInfo({ key: "demand", anchor: el })} label="Más información sobre consultas y capacidad" style={{ position: "absolute", top: 10, right: 10 }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, paddingRight: 28 }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--ink-soft)", marginBottom: 2 }}><Users size={12} /> Consultas que llegan hoy</div>
@@ -2973,7 +3634,7 @@ function Juego({ onActiveChange }) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Tus números hasta ahora</span>
-        <InfoButton onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
+        <InfoButton gkey={"stats"} onClick={(el) => setInfo({ key: "stats", anchor: el })} label="Más información sobre tus números" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${diff.showEnergy ? 3 : 2}, 1fr)`, gap: 8, marginBottom: 10 }}>
         <StatBox icon={Droplets} color="var(--acc-teal)" bg="var(--acc-teal-bg)" value={`${numFmt(state.totalWaterL, 1)} L`} label="Agua acumulada" delay={0} />
@@ -2981,17 +3642,15 @@ function Juego({ onActiveChange }) {
         <StatBox icon={Wallet} color="var(--acc-green)" bg="var(--acc-green-bg)" value={`$${numFmt(state.budget, 0)}`} label="Presupuesto" delay={80} />
       </div>
 
-      {easy ? (
-        <CareBar value={state.sustainability} label="Agua cuidada" />
-      ) : (
+      {easy ? null : (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div style={{ position: "relative" }}>
           <Gauge value={state.sustainability} color={gradeFor(state.sustainability).color} label="Sostenibilidad" />
-          <InfoButton onClick={(el) => setInfo({ key: "sostenibilidad", anchor: el })} label="Más información sobre la sostenibilidad" style={{ position: "absolute", top: 8, right: 8 }} />
+          <InfoButton gkey={"sostenibilidad"} onClick={(el) => setInfo({ key: "sostenibilidad", anchor: el })} label="Más información sobre la sostenibilidad" style={{ position: "absolute", top: 8, right: 8 }} />
         </div>
         <div style={{ position: "relative" }}>
           <Gauge value={state.reputation} color={reputationGrade(state.reputation).color} label="Reputación" />
-          <InfoButton onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
+          <InfoButton gkey={"reputacion"} onClick={(el) => setInfo({ key: "reputacion", anchor: el })} label="Más información sobre la reputación" style={{ position: "absolute", top: 8, right: 8 }} />
         </div>
       </div>
       )}
@@ -3020,7 +3679,12 @@ function Juego({ onActiveChange }) {
 
       {state.event && state.event.kind === "modifier" && state.event.id !== "calm" && !state.dayResult && (
         <div className="hi-alert-in" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--acc-mustard-bg)", border: "1px solid var(--acc-mustard)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
-          <AlertTriangle size={15} color="var(--acc-mustard)" style={{ marginTop: 1, flexShrink: 0 }} />
+          {(() => {
+            const cd = EVENT_COUNTER[state.event.id] ? GAME_ACTION_DEFS.find(a => a.id === EVENT_COUNTER[state.event.id]) : null;
+            if (!cd) return <AlertTriangle size={15} color="var(--acc-mustard)" style={{ marginTop: 1, flexShrink: 0 }} />;
+            const CIcon = cd.icon;
+            return <span style={{ width: 24, height: 24, borderRadius: 7, border: `2px solid ${cd.color}`, background: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><CIcon size={14} color={cd.color} /></span>;
+          })()}
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acc-mustard)" }}>{state.event.emoji} {state.event.label}</div>
             <div style={{ fontSize: 12, color: "var(--ink)" }}>{state.event.desc}</div>
@@ -3057,7 +3721,7 @@ function Juego({ onActiveChange }) {
 
       {state.event && state.event.kind === "sources" && !state.eventChoiceResolved && state.event.scenario && (
         <div className="hi-card" style={{ background: "var(--acc-indigo-bg, var(--paper-soft))", border: `1px solid ${state.event.character ? state.event.character.color : "var(--acc-rose)"}`, borderRadius: 8, padding: "12px 14px", marginBottom: 12, position: "relative" }}>
-          <InfoButton onClick={(el) => setInfo({ key: "sources", anchor: el })} label="Cómo reconocer una fuente confiable" style={{ position: "absolute", top: 10, right: 10 }} />
+          <InfoButton gkey={"sources"} onClick={(el) => setInfo({ key: "sources", anchor: el })} label="Cómo reconocer una fuente confiable" style={{ position: "absolute", top: 10, right: 10 }} />
           {state.event.character ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <CharacterAvatar character={state.event.character} />
@@ -3131,7 +3795,7 @@ function Juego({ onActiveChange }) {
                     <span className="hi-pick-check" aria-hidden="true" style={{ position: "absolute", top: -8, left: -8, width: 22, height: 22, borderRadius: "50%", background: action.color, color: "#fff", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, lineHeight: 1 }}>✓</span>
                   )}
                 </button>
-                <InfoButton onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+                <InfoButton gkey={action.id} onClick={(el) => setInfo({ key: action.id, anchor: el })} label={`Más información sobre ${action.label}`} style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
                 </div>
               );
             })}
@@ -3157,7 +3821,7 @@ function Juego({ onActiveChange }) {
               <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>No invertís nada hoy: guardás el presupuesto para más adelante.</div>
             </div>
           </button>
-          <InfoButton onClick={(el) => setInfo({ key: "save", anchor: el })} label="Más información sobre pasar el día y ahorrar" style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
+          <InfoButton gkey={"save"} onClick={(el) => setInfo({ key: "save", anchor: el })} label="Más información sobre pasar el día y ahorrar" style={{ position: "absolute", top: "50%", right: 10, transform: "translateY(-50%)" }} />
           </div>
 
           <button
@@ -3250,7 +3914,7 @@ function Juego({ onActiveChange }) {
         </div>
       )}
 
-      {easy ? <GoalStrip state={state} /> : (
+      {easy ? (<><GoalStrip state={state} /><div style={{ marginTop: 12 }}><CareBar value={state.sustainability} label="Agua cuidada" /></div></>) : (
       <div className="hi-card" style={{ background: "var(--paper)", borderRadius: 10, padding: "12px 16px", marginTop: 12, marginBottom: 0, borderLeft: "4px solid var(--acc-purple)" }}>
         {state.missionNote && (
           <div style={{ marginBottom: 8, fontSize: 12, color: state.missionNote.met ? "var(--acc-green)" : "var(--ink-soft)" }}>
