@@ -292,7 +292,7 @@ function App() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // Gota orienta en las pantallas fuera del juego (dentro del juego lo hace Juego)
+  // Gotia orienta en las pantallas fuera del juego (dentro del juego lo hace Juego)
   const outCtx = tab === "laboratorio"
     ? { key: "lab", mood: "happy", sticky: false, react: null, msg: "Acá jugás con los números: movés los controles y ves cómo cambia el agua y la electricidad.", tips: ["Las cifras de agua indirecta dependen de la electricidad que se usa.", ...GOTA_BASE_TIPS] }
     : { key: "__inicio" };
@@ -484,7 +484,7 @@ function GlobalStyle() {
       .sd-cur.is-link.is-down { width: 36px; height: 36px; }
       html.has-cur body *:not(input[type=text]):not(input[type=number]):not(input[type=search]):not(textarea):not(select):not([contenteditable]) { cursor: none !important; }
       @media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) { .sd-cur { display: none !important; } }
-      /* ===== Gota guía ===== */
+      /* ===== Gotia guía ===== */
       @keyframes gotaTalk { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
       .hi-talk { transform-box: fill-box; transform-origin: 50% 50%; animation: gotaTalk .28s ease-in-out infinite; }
       @keyframes gotaLand { 0% { transform: scale(1.18, .78); } 60% { transform: scale(.94, 1.06); } 100% { transform: scale(1, 1); } }
@@ -715,7 +715,7 @@ function CustomCursor() {
   return null;
 }
 
-// ---------- Gota guía: la mascota flotante que acompaña, reacciona y orienta ----------
+// ---------- Gotia guía: la mascota flotante que acompaña, reacciona y orienta ----------
 const gota = (() => {
   const subs = new Set();
   let cur = { key: "", msg: "", tips: [], mood: "happy", react: null, sticky: false, n: 0 };
@@ -752,7 +752,7 @@ function useGotaStore() {
   return { cur: gota.cur, enabled: gota.enabled, stage: gota.stage, suppress: gota.suppress, held: gota.held };
 }
 
-// Cada pantalla le avisa a Gota qué está pasando; solo cambia cuando cambia la "key".
+// Cada pantalla le avisa a Gotia qué está pasando; solo cambia cuando cambia la "key".
 function useGota(next) {
   useEffect(() => { gota.set(next); }, [next.key]);
 }
@@ -805,7 +805,7 @@ function buildGotaCtx({ zone, diffKey, state, chosen }) {
   if (state.budget < 1500) tips.push("Te queda poco presupuesto: cuidá cada inversión.");
   if (state.totalUnmet > 0) tips.push("Hubo consultas sin atender: ampliar capacidad ayuda.");
   tips.push("Arrastrame sobre una mejora o un número y te cuento más.", ...GOTA_BASE_TIPS);
-  let msg = state.day === 1 ? "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño." : "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
+  let msg = state.day === 1 ? "¡Hola! Soy Gotia. Cada día elegí una mejora y confirmá. Yo te acompaño." : "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
   if (mod) msg = `${state.event.emoji} ${state.event.label}: ${state.event.desc}` + (state.diff && state.diff.tier === 1 && EVENT_HINT[state.event.id] ? ` ${EVENT_HINT[state.event.id]}` : "");
   else if (state.sustainability < 35) msg = "El agua está en riesgo. Una mejora de enfriamiento o energía limpia ayudaría.";
   return { key: `day-${state.day}`, mood: state.sustainability < 35 ? "worried" : mood, sticky, react: mod ? "bad" : null, msg, tips };
@@ -853,12 +853,12 @@ function GotaGuide({ hidden, chase = false }) {
   const dockedRef = useRef(false);
   const visRef = useRef(true);
   const hoverRef = useRef(null);
-  const [perch, setPerch] = useState(null);     // Gota apoyada junto a algo que está explicando
+  const [perch, setPerch] = useState(null);     // Gotia apoyada junto a algo que está explicando
   const perchRef = useRef(null);
   const fallingRef = useRef(false);
   fallingRef.current = falling;
 
-  // movimiento suave: Gota se desliza hacia su destino y se inclina un poco según la velocidad
+  // movimiento suave: Gotia se desliza hacia su destino y se inclina un poco según la velocidad
   const run = () => {
     if (loopRef.current) return;
     const step = () => {
@@ -875,7 +875,7 @@ function GotaGuide({ hidden, chase = false }) {
   };
   const goTo = (v) => { tx.current = clampX(v); run(); };
 
-  // en el juego Gota persigue al cursor y se queda cerca (abajo a la derecha, o a la izquierda si está en el borde)
+  // en el juego Gotia persigue al cursor y se queda cerca (abajo a la derecha, o a la izquierda si está en el borde)
   const chaseGo = () => {
     if (chaseLoop.current) return;
     const step = () => {
@@ -965,7 +965,7 @@ function GotaGuide({ hidden, chase = false }) {
       if (!raf) raf = requestAnimationFrame(upd);
       if (chaseRef.current && !drag.current && !(e.target.closest && e.target.closest("[data-gota]"))) setChaseTarget(e.clientX, e.clientY);
     };
-    // en el juego: si tocás algo que tiene su «i», Gota te cuenta un dato extra de eso
+    // en el juego: si tocás algo que tiene su «i», Gotia te cuenta un dato extra de eso
     const onClick = (e) => {
       if (!chaseRef.current) return;
       const t = e.target; if (!t || !t.closest || t.closest("[data-gota],[data-gkey]")) return;
@@ -1058,7 +1058,7 @@ function GotaGuide({ hidden, chase = false }) {
     const d = drag.current; if (!d) return;
     if (!d.on && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) { d.on = true; setHeld(true); gota.setHeld(true); setFalling(false); if (perchRef.current) { perchRef.current = null; setPerch(null); } }
     if (d.on) {
-      // ¿está sobre algo que Gota puede explicar? (mejora, número, medidor)
+      // ¿está sobre algo que Gotia puede explicar? (mejora, número, medidor)
       let found = null;
       try {
         const stack = document.elementsFromPoint(e.clientX, e.clientY);
@@ -1091,7 +1091,7 @@ function GotaGuide({ hidden, chase = false }) {
     const hov = hoverRef.current; hoverRef.current = null;
     if (hov && hov.el) {
       hov.el.classList.remove("hi-gota-target");
-      // Gota se apoya a la izquierda del elemento y es ella la que cuenta la información
+      // Gotia se apoya a la izquierda del elemento y es ella la que cuenta la información
       perchRef.current = { key: hov.key, el: hov.el }; setPerch({ key: hov.key, el: hov.el });
       const pp = perchPos(hov.el);
       xr.current = pp.x; tx.current = pp.x; yr.current = pp.y;
@@ -1111,12 +1111,12 @@ function GotaGuide({ hidden, chase = false }) {
   if (x == null || y == null || hidden || stage || suppress) return null;
   if (!enabled) {
     return (
-      <button onClick={() => gota.setEnabled(true)} className="hi-btn" aria-label="Mostrar a Gota, tu guía" title="Mostrar a Gota"
+      <button onClick={() => gota.setEnabled(true)} className="hi-btn" aria-label="Mostrar a Gotia, tu guía" title="Mostrar a Gotia"
         style={{ position: "fixed", right: 14, bottom: 16, zIndex: 90, width: 40, height: 40, borderRadius: "50%", border: "2px solid var(--pop-ink)", background: "#fff", boxShadow: "3px 3px 0 var(--pop-ink)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, padding: 0 }}>💧</button>
     );
   }
   const bw = Math.min(250, window.innerWidth - 16);
-  const bLeft = Math.max(8, Math.min(window.innerWidth - bw - 8, x + W / 2 - bw / 2));   // el globo acompaña a Gota
+  const bLeft = Math.max(8, Math.min(window.innerWidth - bw - 8, x + W / 2 - bw / 2));   // el globo acompaña a Gotia
   const tail = Math.max(14, Math.min(bw - 26, x + W / 2 - bLeft - 6));
   const text = cur.msg.slice(0, typed);
   const below = y < 150;
@@ -1162,7 +1162,7 @@ function GotaGuide({ hidden, chase = false }) {
       )}
       <div data-gota="1" className={landing ? "hi-gota-land" : undefined} style={{ position: "fixed", left: x, top: y, width: W, height: H, zIndex: 90, touchAction: "none", opacity: (vis || held || perch) ? 1 : 0, pointerEvents: (vis || held || perch) ? "auto" : "none",  transform: perch ? "scale(.55)" : (landing || held ? undefined : `rotate(${lean}deg)`), transformOrigin: perch ? "0 50%" : "50% 100%", transition: falling ? "left .62s cubic-bezier(.34,1.35,.5,1), top .62s cubic-bezier(.34,1.35,.5,1), transform .62s cubic-bezier(.34,1.35,.5,1), opacity .2s ease" : "transform .18s ease-out, opacity .2s ease" }}>
         <button onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={onKeyDown}
-          aria-label="Gota, tu guía. Tocala para un consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
+          aria-label="Gotia, tu guía. Tocala para un consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
           style={{ width: W, height: H, padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "none", display: "block", filter: held ? "drop-shadow(0 8px 6px rgba(20,24,31,.28))" : "drop-shadow(0 3px 0 rgba(20,24,31,.22))" }}>
           <GotaMascot mood={cur.mood || "happy"} size={W} react={react} look={held ? { x: 0, y: -0.6 } : look} blink={blink} talk={talking || !!perch} />
         </button>
@@ -1400,11 +1400,11 @@ const pillBadge = (color, bg) => ({
 });
 
 const HOME_TIPS = [
-  "¡Hola! Soy Gota. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.",
+  "¡Hola! Soy Gotia. Te invito a manejar un centro de datos y a ver cuánta agua se esconde detrás de cada consulta.",
   "Podés agarrarme y soltarme: ¡me encanta caer!",
 ];
 
-// Globo de Gota dentro de la tarjeta del juego: muestra el mensaje actual; tocarlo cambia el consejo.
+// Globo de Gotia dentro de la tarjeta del juego: muestra el mensaje actual; tocarlo cambia el consejo.
 function DockBubble() {
   const { cur, held } = useGotaStore();
   const reduce = typeof window !== "undefined" && !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -1425,7 +1425,7 @@ function DockBubble() {
   );
 }
 
-// Gota del inicio: mira al puntero, parpadea, habla, se puede agarrar y cambia de consejo.
+// Gotia del inicio: mira al puntero, parpadea, habla, se puede agarrar y cambia de consejo.
 function HomeGota({ live = false, quiet = false, size = 58, aside = null }) {
   const store = useGotaStore();
   const liveTip = useRef(0);
@@ -1519,7 +1519,7 @@ function HomeGota({ live = false, quiet = false, size = 58, aside = null }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: quiet ? "center" : "flex-start", gap: 14, margin: aside ? "34px 0 20px 4px" : quiet ? "0 0 14px" : "0 0 20px 4px", position: "relative", zIndex: 3 }}>
       <div style={{ flexShrink: 0, transform: `translate(${off.x}px, ${off.y}px) rotate(${held ? 0 : tilt}deg)`, transformOrigin: "50% 100%", transition: back ? "transform .62s cubic-bezier(.34,1.45,.5,1)" : "transform .18s ease-out" }}>
       <button ref={ref} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onKeyDown={onKey}
-        aria-label="Gota. Tocala para otro consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
+        aria-label="Gotia. Tocala para otro consejo; arrastrala para moverla" className={`hi-btn ${held ? "hi-gota-held" : ""}`}
         style={{ width: size, height: Math.round(size * 1.2), padding: 0, border: "none", background: "none", cursor: "pointer", touchAction: "none", display: "block",
           filter: held ? "drop-shadow(0 10px 8px rgba(20,24,31,.28))" : "none" }}>
         <GotaMascot mood={live ? (store.cur.mood || "happy") : "happy"} size={size} react={react} look={held ? { x: 0, y: -0.8 } : look} blink={blink} talk={talking} />
@@ -2108,7 +2108,7 @@ const GAME_DIFFICULTIES = {
     showRep: false, showEnergy: false, characters: false, trivia: false, missions: false, objectives: false, dataPanel: false, fines: false,
     harsh: 0.6, repPenalty: 0.5,
     tagline: "Para jugar tranquilo",
-    bullets: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+    bullets: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gotia te va diciendo cómo vas"],
   },
   normal: {
     label: "Normal", tier: 2, days: 8, budget: 11000, demandBase: 500, demandStep: 130, severity: 1, threshold: 0.79,
@@ -2445,8 +2445,8 @@ const GUIDE_STEPS = [
     body: "Cada día llega una cantidad de consultas para atender. Vos elegís UNA sola cosa: invertir en algo (por ejemplo, mejorar el enfriamiento o sumar energía renovable) o ahorrar ese día sin gastar nada. Comprar la misma mejora muchas veces la va poniendo cada vez más cara. Ojo con los imprevistos: olas de calor, cortes de luz, alertas por contaminación. Cada mejora tiene un ícono, y el mismo ícono aparece en el imprevisto que ayuda a enfrentar. En Fácil, elegir esa mejora evita o reduce el daño; en Normal y Difícil el ícono es solo una pista.",
   },
   {
-    icon: Droplet, color: "var(--acc-teal)", title: "Conocé a Gota",
-    body: "Gota es tu guía durante todo el juego. Tocala a ella o a su burbuja y te da otro consejo. Agarrala y soltala sobre una mejora o un número y te explica de qué se trata: te habla desde el borde de la pantalla, sin tapar nada. Cuando la soltás o la volvés a tocar, vuelve sola a su lugar. Si te molesta, la podés apagar con el botón Gota; entonces vuelven los botones ⓘ.",
+    icon: Droplet, color: "var(--acc-teal)", title: "Conocé a Gotia",
+    body: "Gotia es tu guía durante todo el juego. Tocala a ella o a su burbuja y te da otro consejo. Agarrala y soltala sobre una mejora o un número y te explica de qué se trata: te habla desde el borde de la pantalla, sin tapar nada. Cuando la soltás o la volvés a tocar, vuelve sola a su lugar. Si te molesta, la podés apagar con el botón Gotia; entonces vuelven los botones ⓘ.",
   },
   {
     icon: Users, color: "var(--acc-orange)", title: "Te vas a cruzar con personajes y sorpresas",
@@ -2547,7 +2547,7 @@ const INFO_TEXTS = {
   },
   diff_facil: {
     title: "Dificultad Fácil",
-    body: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gota te va diciendo cómo vas"],
+    body: ["3 decisiones simples", "Una sola meta: cuidar el agua", "Sin multas ni preguntas", "Gotia te va diciendo cómo vas"],
   },
   diff_normal: {
     title: "Dificultad Normal",
@@ -2777,7 +2777,7 @@ function InfoModal({ info, anchor, onClose, onGuide }) {
   );
 }
 
-// --- Gota: la mascota. Cambia de cara según cómo viene el agua de la partida ---
+// --- Gotia: la mascota. Cambia de cara según cómo viene el agua de la partida ---
 function gotaMood(sustainability) {
   if (sustainability >= 60) return "happy";
   if (sustainability >= 45) return "ok";
@@ -2831,7 +2831,7 @@ function gotaSays(state) {
     return "Día tranquilo. ¡Seguimos!";
   }
   if (state.event && state.event.kind === "modifier" && state.event.id !== "calm") return `${state.event.emoji} ${state.event.label}: ${state.event.desc}` + (state.diff && state.diff.tier === 1 && EVENT_HINT[state.event.id] ? ` ${EVENT_HINT[state.event.id]}` : "");
-  if (state.day === 1) return "¡Hola! Soy Gota. Cada día elegí una mejora y confirmá. Yo te acompaño.";
+  if (state.day === 1) return "¡Hola! Soy Gotia. Cada día elegí una mejora y confirmá. Yo te acompaño.";
   return "Elegí una mejora o ahorrá el día. ¡Vos mandás!";
 }
 
@@ -3100,7 +3100,7 @@ function buildShareCanvas(d) {
   g.fillStyle = INK; g.font = "400 62px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText("SEQU", 120, 190); { const w0 = g.measureText("SEQU").width; g.fillStyle = "#FF6A00"; g.fillText("IA", 120 + w0, 190); }
   g.fillStyle = SOFT; g.font = "500 26px Inter, sans-serif";
   wrapCanvasText(g, "Un juego sobre la IA, el agua y las decisiones que no vemos.", 120, 232, 560, 34);
-  // Gota
+  // Gotia
   g.save(); g.translate(800, 120); g.scale(1.05, 1.05);
   const drop = new Path2D("M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z");
   g.fillStyle = BLUE; g.fill(drop); g.lineWidth = 5; g.strokeStyle = INK; g.stroke(drop);
@@ -3437,7 +3437,7 @@ function Juego({ onActiveChange }) {
             Comprar la misma mejora varias veces la hace más cara. Tu <strong>sostenibilidad</strong> sube o baja según cuánta agua gastás por consulta atendida,
             y tu <strong>reputación</strong> según la demanda que dejás sin atender y las decisiones que tomás. En el camino te vas a cruzar con <strong>personajes</strong> que te plantean decisiones,
             preguntas de <strong>Mito/Dato/Depende</strong> y casos donde tenés que elegir la fuente confiable. Las <strong>misiones</strong> marcan el rumbo de la partida, y si la sostenibilidad
-            queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en un puntaje de 0 a 100, una insignia y un final según cómo jugaste. Si necesitás una mano, tocá a Gota o arrastrala sobre cualquier mejora o número.
+            queda muy baja varios días seguidos, te llega una multa. Al final, tu resultado se resume en un puntaje de 0 a 100, una insignia y un final según cómo jugaste. Si necesitás una mano, tocá a Gotia o arrastrala sobre cualquier mejora o número.
           </div>
         )}
         {info && <InfoModal info={info.key} anchor={info.anchor} onClose={() => setInfo(null)} onGuide={() => { setInfo(null); setShowGuide(true); }} />}
