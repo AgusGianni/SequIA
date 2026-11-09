@@ -1,7 +1,7 @@
 {
   "name": "SequIA — Un juego sobre la IA, el agua y las decisiones que no vemos",
   "short_name": "SequIA",
-  "description": "Simulador y calculadora sobre la huella hídrica y energética de la inteligencia artificial.",
+  "description": "Juego para gestionar un centro de datos y descubrir el agua y la energía que gasta la inteligencia artificial.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

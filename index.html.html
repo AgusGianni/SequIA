@@ -3089,39 +3089,115 @@ function buildShareCanvas(d) {
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const g = c.getContext("2d");
-  const INK = "#14181F", BLUE = "#2952E3", SOFT = "#5B6472";
-  g.fillStyle = "#4FD6FF"; g.fillRect(0, 0, W, H);
-  g.fillStyle = "rgba(20,24,31,0.14)";
-  for (let x = 30; x < W; x += 40) for (let y = 30; y < H; y += 40) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = INK; g.fillRect(84, 104, 920, 1140);
-  g.fillStyle = "#FFFFFF"; g.fillRect(70, 90, 920, 1140);
-  g.lineWidth = 6; g.strokeStyle = INK; g.strokeRect(70, 90, 920, 1140);
-  g.textAlign = "left"; g.textBaseline = "alphabetic";
-  g.fillStyle = INK; g.font = "400 62px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText("SEQU", 120, 190); { const w0 = g.measureText("SEQU").width; g.fillStyle = "#FF6A00"; g.fillText("IA", 120 + w0, 190); }
-  g.fillStyle = SOFT; g.font = "500 26px Inter, sans-serif";
-  wrapCanvasText(g, "Un juego sobre la IA, el agua y las decisiones que no vemos.", 120, 232, 560, 34);
-  // Gotia
-  g.save(); g.translate(800, 120); g.scale(1.05, 1.05);
-  const drop = new Path2D("M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z");
-  g.fillStyle = BLUE; g.fill(drop); g.lineWidth = 5; g.strokeStyle = INK; g.stroke(drop);
-  g.fillStyle = "#FFFFFF"; g.beginPath(); g.arc(44, 80, 9, 0, 7); g.arc(76, 80, 9, 0, 7); g.fill();
-  g.fillStyle = INK; g.beginPath(); g.arc(46, 81, 4.5, 0, 7); g.arc(74, 81, 4.5, 0, 7); g.fill();
-  g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(44, 92); g.quadraticCurveTo(60, 110, 76, 92); g.stroke();
+  const INK = "#14181F", BLUE = "#2952E3", OR = "#FF6A00", SOFT = "#5B6472", CY = "#4FD6FF";
+  const DISP = "'Bowlby One', Newsreader, Georgia, serif", SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
+  const EMO = "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  const box = (x, y, w, h, r, fill, sh) => {
+    if (sh) { rr(x + sh, y + sh, w, h, r); g.fillStyle = INK; g.fill(); }
+    rr(x, y, w, h, r); g.fillStyle = fill; g.fill(); g.lineWidth = 5; g.strokeStyle = INK; g.stroke();
+  };
+  // fondo
+  g.fillStyle = CY; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(20,24,31,0.13)";
+  for (let x = 24; x < W; x += 36) for (let y = 24; y < H; y += 36) { g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill(); }
+  // tarjeta principal
+  box(54, 54, 960, 1236, 34, "#FFFFFF", 16);
+  g.save(); rr(54, 54, 960, 1236, 34); g.clip();
+  // cabecera azul
+  g.fillStyle = BLUE; g.fillRect(54, 54, 960, 168);
+  g.fillStyle = "rgba(255,255,255,0.10)";
+  for (let x = 70; x < 1014; x += 30) for (let y = 70; y < 222; y += 30) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
   g.restore();
-  // Final
+  g.lineWidth = 5; g.strokeStyle = INK; g.beginPath(); g.moveTo(54, 222); g.lineTo(1014, 222); g.stroke();
+  g.textAlign = "left"; g.textBaseline = "alphabetic";
+  g.font = `400 74px ${DISP}`; g.fillStyle = "#FFFFFF"; g.fillText("SEQU", 98, 150);
+  { const w0 = g.measureText("SEQU").width; g.fillStyle = OR; g.fillText("IA", 98 + w0, 150); }
+  g.fillStyle = "rgba(255,255,255,0.92)"; g.font = `600 26px ${SANS}`; g.fillText(d.meta, 100, 196);
+  // Gotia asomando en la cabecera
+  g.save(); g.translate(836, 72); g.scale(0.98, 0.98);
+  const drop = new Path2D("M60 6 C40 42, 12 70, 12 96 C12 122, 33 140, 60 140 C87 140, 108 122, 108 96 C108 70, 80 42, 60 6 Z");
+  g.fillStyle = "#4FD6FF"; g.fill(drop); g.lineWidth = 5.5; g.strokeStyle = INK; g.stroke(drop);
+  g.fillStyle = "rgba(255,255,255,0.65)"; g.beginPath(); g.ellipse(36, 100, 7, 15, 0.35, 0, 7); g.fill();
+  g.fillStyle = "#FFFFFF"; g.beginPath(); g.arc(44, 80, 10, 0, 7); g.arc(76, 80, 10, 0, 7); g.fill();
+  g.fillStyle = INK; g.beginPath(); g.arc(46, 81, 5, 0, 7); g.arc(74, 81, 5, 0, 7); g.fill();
+  g.lineWidth = 4.5; g.lineCap = "round"; g.beginPath(); g.moveTo(44, 94); g.quadraticCurveTo(60, 112, 76, 94); g.stroke();
+  g.fillStyle = "rgba(255,106,0,0.55)"; g.beginPath(); g.arc(30, 96, 7, 0, 7); g.arc(90, 96, 7, 0, 7); g.fill();
+  g.restore();
+
   g.textAlign = "center";
-  g.font = "120px sans-serif"; g.fillStyle = INK; g.fillText(d.emoji, W / 2, 470);
-  g.fillStyle = d.color; g.font = "400 66px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText(d.title.toUpperCase(), W / 2, 575);
-  g.fillStyle = INK; g.font = "500 32px Inter, sans-serif";
-  wrapCanvasText(g, d.tagline, W / 2, 640, 780, 44);
-  // Cifra principal
-  g.fillStyle = d.waterColor; g.font = "400 130px 'Bowlby One', Newsreader, Georgia, serif"; g.fillText(d.water + " L", W / 2, 930);
-  g.fillStyle = INK; g.font = "600 36px Inter, sans-serif"; g.fillText("de agua gastó mi centro de datos", W / 2, 990);
-  g.fillStyle = SOFT; g.font = "500 32px Inter, sans-serif"; g.fillText(`≈ ${d.glasses} vasos de agua · ${d.served} consultas atendidas`, W / 2, 1050);
-  g.fillStyle = INK; g.font = "600 30px Inter, sans-serif"; g.fillText(d.meta, W / 2, 1120);
-  g.font = "700 36px Inter, sans-serif";
-  { const p1 = "Jugá SequIA", p2 = ": www.sequ-ia.com.ar"; const a = g.measureText("Jugá Sequ").width, b = g.measureText("IA").width, c = g.measureText(p2).width, x0 = W / 2 - (a + b + c) / 2;
-    g.textAlign = "left"; g.fillStyle = BLUE; g.fillText("Jugá Sequ", x0, 1185); g.fillStyle = "#FF6A00"; g.fillText("IA", x0 + a, 1185); g.fillStyle = BLUE; g.fillText(p2, x0 + a + b, 1185); g.textAlign = "center"; }
+  // final de la partida (sello)
+  let y = 244;
+  g.font = `400 40px ${DISP}`;
+  const tag = d.title.toUpperCase();
+  g.font = `400 54px ${DISP}`;
+  let tw = g.measureText(tag).width, fs = 54;
+  while (tw > 800 && fs > 30) { fs -= 2; g.font = `400 ${fs}px ${DISP}`; tw = g.measureText(tag).width; }
+  g.font = `400 72px ${EMO}`; g.fillStyle = INK; g.fillText(d.emoji, W / 2, y + 78);
+  g.font = `400 ${fs}px ${DISP}`; g.fillStyle = d.color; g.fillText(tag, W / 2, y + 148);
+  g.fillStyle = INK; g.font = `500 28px ${SANS}`;
+  const ty = wrapCanvasText(g, d.tagline, W / 2, y + 194, 780, 36);
+  y = Math.max(512, ty + 6);
+
+  if (d.scored) {
+    // anillo de puntaje + insignia
+    const cx = 290, cy = y + 112, R = 86;
+    g.lineWidth = 26; g.lineCap = "butt"; g.strokeStyle = "#E4EAF0";
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = d.color; g.lineCap = "round";
+    g.beginPath(); g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, d.avg / 100)); g.stroke();
+    g.textAlign = "center"; g.fillStyle = INK; g.font = `400 76px ${DISP}`; g.fillText(String(d.avg), cx, cy + 18);
+    g.fillStyle = SOFT; g.font = `700 26px ${SANS}`; g.fillText("/100", cx, cy + 54);
+    // insignia
+    box(480, y + 12, 500, 200, 22, "#FFF3E0", 8);
+    g.fillStyle = SOFT; g.font = `700 22px ${SANS}`; g.textAlign = "left"; g.fillText("TU INSIGNIA", 516, y + 58);
+    g.font = `400 68px ${EMO}`; g.fillStyle = INK; g.fillText(d.badge, 516, y + 150);
+    g.font = `400 40px ${DISP}`; g.fillStyle = INK;
+    let nm = d.rankName, nf = 40; while (g.measureText(nm).width > 320 && nf > 24) { nf -= 2; g.font = `400 ${nf}px ${DISP}`; }
+    wrapCanvasText(g, nm, 620, y + 124 + (g.measureText(nm).width > 320 ? -6 : 12), 340, nf + 8);
+    y += 236;
+  }
+  // agua
+  if (!d.scored) y += 150;
+  const wh = d.scored ? 164 : 214;
+  box(84, y, 912, wh, 24, "#E8FAFF", 8);
+  g.textAlign = "center";
+  g.fillStyle = INK; g.font = `700 28px ${SANS}`; g.fillText("MI CENTRO DE DATOS GASTÓ", W / 2, y + (d.scored ? 40 : 44));
+  let nf2 = d.scored ? 84 : 108; g.font = `400 ${nf2}px ${DISP}`; const wtxt = d.water + " L";
+  while (g.measureText(wtxt).width > 820 && nf2 > 60) { nf2 -= 4; g.font = `400 ${nf2}px ${DISP}`; }
+  g.fillStyle = d.waterColor; g.fillText(wtxt, W / 2, y + (d.scored ? 116 : 144));
+  g.fillStyle = INK; g.font = `600 26px ${SANS}`; g.fillText(`de agua · ${d.served} consultas atendidas`, W / 2, y + (d.scored ? 148 : 188));
+  y += wh + 18;
+  // chips
+  const chips = [`≈ ${d.glasses} vasos de agua`, `≈ ${d.phone} cargas de celular`];
+  g.font = `700 27px ${SANS}`;
+  const cw = chips.map(t => g.measureText(t).width + 40);
+  const rowW = cw.reduce((a, b) => a + b, 0) + 14 * (chips.length - 1);
+  let x0 = W / 2 - rowW / 2;
+  if (rowW > 912) { x0 = 84; }
+  const cols = ["#FFE3CC", "#E8E8FF"];
+  chips.forEach((t, i) => { box(x0, y, cw[i], 50, 25, cols[i], 4); g.fillStyle = INK; g.textAlign = "center"; g.fillText(t, x0 + cw[i] / 2, y + 34); x0 += cw[i] + 14; });
+  y += 50 + 26;
+  // barras de puntajes
+  if (d.scored) {
+    g.textAlign = "left";
+    d.bars.forEach((b, i) => {
+      const by = y + i * 33;
+      g.fillStyle = INK; g.font = `600 21px ${SANS}`; g.fillText(b.label, 100, by + 19);
+      rr(330, by + 2, 560, 20, 10); g.fillStyle = "#E4EAF0"; g.fill();
+      const w = Math.max(20, 560 * b.value / 100);
+      rr(330, by + 2, w, 20, 10); g.fillStyle = b.color; g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.stroke();
+      g.textAlign = "right"; g.font = `700 21px ${SANS}`; g.fillStyle = INK; g.fillText(String(b.value), 980, by + 20); g.textAlign = "left";
+    });
+  }
+  // pie
+  g.save(); rr(54, 54, 960, 1236, 34); g.clip();
+  g.fillStyle = INK; g.fillRect(54, 1220, 960, 70);
+  g.restore();
+  g.textAlign = "left"; g.font = `800 34px ${SANS}`;
+  { const p2 = ": www.sequ-ia.com.ar"; const a = g.measureText("¿Y el tuyo? Jugá Sequ").width, b = g.measureText("IA").width, c2 = g.measureText(p2).width, xs = W / 2 - (a + b + c2) / 2;
+    g.fillStyle = "#FFFFFF"; g.fillText("¿Y el tuyo? Jugá Sequ", xs, 1264); g.fillStyle = OR; g.fillText("IA", xs + a, 1264); g.fillStyle = CY; g.fillText(p2, xs + a + b, 1264); }
+  g.textAlign = "center";
   return c;
 }
 
@@ -3177,15 +3253,37 @@ function ScoreRing({ icon: Icon, color, label, value, delay = 0 }) {
   );
 }
 
-function ShareCard({ state, ending, glasses, zone, diff }) {
+function ShareCard({ state, ending, glasses, zone, diff, phone, scores, avg, easy }) {
   const [msg, setMsg] = useState("");
+  const [preview, setPreview] = useState("");
+  const rk = rankTitle(avg).split(" ");
+  const hasEmoji = rk.length > 1 && rk[0].codePointAt(0) > 0x2000;
   const data = {
     emoji: ending.emoji, title: ending.title, tagline: ending.tagline, color: cssVarValue(ending.color), waterColor: cssVarValue("var(--acc-teal)"),
-    water: numFmt(state.totalWaterL, 1), glasses: numFmt(glasses, 0), served: numFmt(state.totalServed, 0),
+    water: numFmt(state.totalWaterL, 1), glasses: numFmt(glasses, 0), phone: numFmt(phone, 0), served: numFmt(state.totalServed, 0),
     meta: `Dificultad ${diff.label} · ${zone.label}`,
+    scored: !easy, avg, badge: hasEmoji ? rk[0] : "🏅", rankName: hasEmoji ? rk.slice(1).join(" ") : rk.join(" "),
+    bars: [
+      { label: "Conocimiento", value: scores.conocimiento, color: "#2952E3" },
+      { label: "Gestión hídrica", value: scores.gestionHidrica, color: "#0FB5E0" },
+      { label: "Eficiencia", value: scores.eficiencia, color: "#FF6A00" },
+      { label: "Transparencia", value: scores.transparencia, color: "#8B5CF6" },
+      { label: "Impacto", value: scores.impacto, color: "#2EAA5B" },
+    ],
   };
+  const dataRef = useRef(data); dataRef.current = data;
+  useEffect(() => {
+    let dead = false;
+    const draw = () => { try { if (!dead) setPreview(buildShareCanvas(dataRef.current).toDataURL("image/png")); } catch (e) { /* sin vista previa */ } };
+    try {
+      const f = document.fonts;
+      if (f && f.load) Promise.all([f.load("400 40px 'Bowlby One'"), f.load("600 24px Inter"), f.load("800 24px Inter")]).then(draw, draw); else draw();
+    } catch (e) { draw(); }
+    return () => { dead = true; };
+  }, []);
   const share = async () => {
     try {
+      try { if (document.fonts && document.fonts.load) await document.fonts.load("400 40px 'Bowlby One'"); } catch (e) { /* usa la fuente de respaldo */ }
       const canvas = buildShareCanvas(data);
       const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
       if (!blob) throw new Error("sin imagen");
@@ -3208,11 +3306,14 @@ function ShareCard({ state, ending, glasses, zone, diff }) {
     }
   };
   return (
-    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "center" }}>
-      <div style={{ fontSize: 30 }}>{ending.emoji}</div>
-      <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontWeight: 700, fontSize: 20, color: ending.color }}>{ending.title}</div>
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 40, color: "var(--acc-teal)", lineHeight: 1.1, marginTop: 6 }}>{data.water} L</div>
-      <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 12 }}>de agua gastó tu centro de datos · ≈ {data.glasses} vasos</div>
+    <div className="hi-card" style={{ background: "var(--paper)", border: "2px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)", borderRadius: 12, padding: "14px 14px 16px", marginBottom: 14, textAlign: "center" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 10 }}>Tu tarjeta para compartir</div>
+      {preview ? (
+        <img src={preview} alt={`Tarjeta de resultado: ${ending.title}, ${data.water} litros de agua${easy ? "" : `, ${avg} sobre 100`}`}
+          style={{ display: "block", width: "100%", maxWidth: 360, margin: "0 auto 14px", borderRadius: 10, border: "2px solid var(--pop-ink)", boxShadow: "4px 4px 0 var(--pop-ink)" }} />
+      ) : (
+        <div style={{ margin: "0 auto 14px", maxWidth: 360, aspectRatio: "4 / 5", borderRadius: 10, border: "2px dashed var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--ink-soft)" }}>Preparando tu tarjeta…</div>
+      )}
       <button onClick={share} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center", background: "var(--acc-blue)" }}>
         Compartir mi resultado
       </button>
@@ -3763,7 +3864,7 @@ function Juego({ onActiveChange }) {
           </div>
         </details>
 
-        <ShareCard state={state} ending={ending} glasses={glasses} zone={zone} diff={diff} />
+        <ShareCard state={state} ending={ending} glasses={glasses} zone={zone} diff={diff} phone={phoneCharges} scores={scores} avg={avgScore} easy={easy} />
 
         <button onClick={restart} className="hi-btn" style={{ ...primaryBtn, width: "100%", justifyContent: "center" }}>
           <RotateCcw size={14} /> Jugar de nuevo
@@ -4235,7 +4336,7 @@ function DatosFuentesModal({ onClose }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 16 }}>
           <StatBox icon={Droplet} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,26 mL" label="Agua directa por consulta de texto" />
           <StatBox icon={Factory} color="var(--dark-panel)" bg="var(--acc-blue-bg)" value="≈1,5 L" label="Agua indirecta por kWh (rango 0,5–2,5; mega centros: hasta ≈7,1 L, directa + indirecta)" />
-          <StatBox icon={Zap} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,24 Wh" label="Electricidad por consulta de texto mediana (Gemini, 2025)" />
+          <div style={{ gridColumn: (typeof window !== "undefined" && window.innerWidth < 520) ? "1 / -1" : "auto", display: "flex", flexDirection: "column" }}><StatBox icon={Zap} color="var(--acc-blue)" bg="var(--acc-blue-bg)" value="0,24 Wh" label="Electricidad por consulta de texto mediana (Gemini, 2025)" /></div>
         </div>
 
         <p style={{ fontSize: 12, color: "var(--ink-soft)", lineHeight: 1.6, margin: "0 0 16px" }}>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "sequia-v2";
+const CACHE_NAME = "sequia-v3";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -46,6 +46,23 @@ self.addEventListener("activate", (event) => {
 // próxima vez.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // La página (HTML) se pide primero a la red, así quien vuelve siempre ve la
+  // versión más nueva; si no hay conexión, se usa la copia guardada.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html") || caches.match("./")))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
