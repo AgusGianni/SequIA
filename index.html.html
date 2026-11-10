@@ -1347,8 +1347,9 @@ function ConfirmExitModal({ onCancel, onConfirm }) {
 }
 
 function Header({ onInstallClick, onHomeClick, compact }) {
+  const narrow = typeof window !== "undefined" && window.innerWidth < 420;
   return (
-    <div style={{ backgroundColor: "#2952E3", backgroundImage: "radial-gradient(rgba(79,214,255,0.45) 1.5px, transparent 1.5px)", backgroundSize: "22px 22px", borderRadius: 12, padding: "14px 18px", marginBottom: 14, border: "3px solid var(--pop-ink)", boxShadow: "5px 5px 0 var(--pop-ink)" }}>
+    <div style={{ backgroundColor: "#2952E3", backgroundImage: "radial-gradient(rgba(79,214,255,0.45) 1.5px, transparent 1.5px)", backgroundSize: "22px 22px", borderRadius: 12, padding: narrow ? "14px 14px" : "14px 18px", marginBottom: 14, border: "3px solid var(--pop-ink)", boxShadow: "5px 5px 0 var(--pop-ink)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onHomeClick} aria-label="Ir al inicio" title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexShrink: 0 }}>
@@ -1360,23 +1361,31 @@ function Header({ onInstallClick, onHomeClick, compact }) {
             <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 19, margin: 0, color: "#fff", lineHeight: 1.1, textTransform: "uppercase" }}>
               <button onClick={onHomeClick} title="Ir al inicio" className="hi-btn" style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", color: "inherit", letterSpacing: "inherit", textTransform: "inherit", cursor: "pointer", textAlign: "left", textShadow: "1.5px 1.5px 0 var(--pop-ink)" }}><SeqName /></button>
             </h1>
-            {!compact && <p style={{ fontSize: 11.5, color: "#fff", margin: "4px 0 0", fontFamily: "var(--font-body)", fontWeight: 500 }}>Un juego sobre la IA, el agua y las decisiones que no vemos.</p>}
-            {!compact && <a
-              href="https://seddedatos.com.ar/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 800, color: "#fff", textDecoration: "underline", marginTop: 5, fontFamily: "var(--font-body)" }}
-            >
-              Sed de Datos <ExternalLink size={10} />
-            </a>}
+            {!compact && <p style={{ fontSize: "clamp(9.5px, 2.65vw, 11.5px)", color: "#fff", margin: "4px 0 0", fontFamily: "var(--font-body)", fontWeight: 500 }}>Un juego sobre la IA, el agua<br />y las decisiones que no vemos.</p>}
           </div>
         </div>
-        <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn hi-pop-btn" style={{
-          background: "var(--pop-or)", border: "2px solid var(--pop-ink)", borderRadius: "50%", boxShadow: "3px 3px 0 var(--pop-ink)",
-          width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
-        }}>
-          <Smartphone size={17} color="#fff" />
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: narrow ? 8 : 9, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: narrow ? 6 : 8 }}>
+          <a href="https://x.com/SedDeDatos" target="_blank" rel="noopener noreferrer" aria-label="Seguinos en X (@SedDeDatos)" title="Seguinos en X (@SedDeDatos)" className="hi-btn hi-pop-btn" style={{
+            background: "var(--pop-or)", border: "2px solid var(--pop-ink)", borderRadius: "50%", boxShadow: "3px 3px 0 var(--pop-ink)",
+            width: narrow ? 36 : 40, height: narrow ? 36 : 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, textDecoration: "none",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          </a>
+          <button onClick={onInstallClick} aria-label="Instalar como app" title="Instalar como app" className="hi-btn hi-pop-btn" style={{
+            background: "var(--pop-or)", border: "2px solid var(--pop-ink)", borderRadius: "50%", boxShadow: "3px 3px 0 var(--pop-ink)",
+            width: narrow ? 36 : 40, height: narrow ? 36 : 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+          }}>
+            <Smartphone size={17} color="#fff" />
+          </button>
+          </div>
+          {!compact && <a href="https://seddedatos.com.ar/" target="_blank" rel="noopener noreferrer" className="hi-btn hi-pop-btn" style={{
+            display: "inline-flex", alignItems: "center", gap: 4, background: "#fff", color: "var(--pop-ink)", border: "2px solid var(--pop-ink)", borderRadius: 9999,
+            boxShadow: "3px 3px 0 var(--pop-ink)", padding: narrow ? "3px 8px" : "3px 10px", fontSize: narrow ? 10 : 10.5, fontWeight: 800, textDecoration: "none", fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+          }}>
+            Sed de Datos {!narrow && <ExternalLink size={10} />}
+          </a>}
+        </div>
       </div>
     </div>
   );
